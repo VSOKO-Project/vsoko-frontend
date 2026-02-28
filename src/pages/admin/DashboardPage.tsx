@@ -11,17 +11,17 @@ import './DashboardPage.css';
 export function DashboardPage() {
   const { data: teachersData, isLoading: tLoading } = useQuery({
     queryKey: ['teachers-rating-dash'],
-    queryFn: () => getTeachersRating({ Page: 1, PageSize: 10 }),
+    queryFn: () => getTeachersRating({ Page: 1, PageSize: 1000 }),
   });
 
   const { data: disciplinesData, isLoading: dLoading } = useQuery({
     queryKey: ['disciplines-rating-dash'],
-    queryFn: () => getDisciplinesRating({ Page: 1, PageSize: 10 }),
+    queryFn: () => getDisciplinesRating({ Page: 1, PageSize: 1000 }),
   });
 
   const { data: feedbackData, isLoading: fLoading } = useQuery({
     queryKey: ['feedback-count-dash'],
-    queryFn: () => getFeedbacks({ Page: 1, PageSize: 1 }),
+    queryFn: () => getFeedbacks({ Page: 1, PageSize: 1000 }),
   });
 
   const isLoading = tLoading || dLoading || fLoading;
@@ -31,11 +31,13 @@ export function DashboardPage() {
   const teacherItems = teachersData?.items || [];
   const disciplineItems = disciplinesData?.items || [];
 
-  const avgTeacherGrade = teacherItems.length
-    ? (teacherItems.reduce((s, t) => s + t.grade, 0) / teacherItems.length)
+  const ratedTeachers = teacherItems.filter((t) => t.grade > 0);
+  const avgTeacherGrade = ratedTeachers.length
+    ? (ratedTeachers.reduce((s, t) => s + t.grade, 0) / ratedTeachers.length)
     : 0;
-  const avgDisciplineGrade = disciplineItems.length
-    ? (disciplineItems.reduce((s, d) => s + d.grade, 0) / disciplineItems.length)
+  const ratedDisciplines = disciplineItems.filter((d) => d.grade > 0);
+  const avgDisciplineGrade = ratedDisciplines.length
+    ? (ratedDisciplines.reduce((s, d) => s + d.grade, 0) / ratedDisciplines.length)
     : 0;
 
   return (

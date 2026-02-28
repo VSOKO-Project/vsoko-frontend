@@ -38,13 +38,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
         <div className="sidebar__logo">
           <div className="sidebar__logo-icon">В</div>
-          <span className="sidebar__logo-text">ВСОКО</span>
+          <span className="sidebar__logo-text">VSOKO</span>
         </div>
         <nav className="sidebar__nav">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
+              end
               className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
               onClick={onClose}
             >

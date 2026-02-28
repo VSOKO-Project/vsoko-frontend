@@ -30,17 +30,13 @@ export function TeachersPage() {
             <table>
               <thead>
                 <tr>
-                  <th>Фамилия</th>
-                  <th>Имя</th>
-                  <th>Отчество</th>
+                  <th>ФИО</th>
                 </tr>
               </thead>
               <tbody>
                 {data?.items.map((t) => (
                   <tr key={t.id}>
-                    <td>{t.surname}</td>
-                    <td>{t.name}</td>
-                    <td>{t.patronymic}</td>
+                    <td>{t.fullName || [t.surname, t.name, t.patronymic].filter(Boolean).join(' ')}</td>
                   </tr>
                 ))}
               </tbody>

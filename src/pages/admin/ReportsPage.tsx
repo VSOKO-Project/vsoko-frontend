@@ -16,7 +16,7 @@ export function ReportsPage() {
       setDownloadUrl(url);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'vsoko-report.pdf';
+      a.download = 'VSOKO-report.pdf';
       a.click();
       toast('Отчёт сгенерирован!', 'success');
     },
@@ -40,7 +40,7 @@ export function ReportsPage() {
             <FileText size={32} />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <h3 style={{ margin: '0 0 0.25rem', color: 'var(--color-primary)' }}>Отчёт ВСОКО</h3>
+            <h3 style={{ margin: '0 0 0.25rem', color: 'var(--color-primary)' }}>Отчёт VSOKO</h3>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
               Сформировать полный отчёт по всем оценкам
             </p>
@@ -51,7 +51,7 @@ export function ReportsPage() {
           {downloadUrl && (
             <a
               href={downloadUrl}
-              download="vsoko-report.pdf"
+              download="VSOKO-report.pdf"
               style={{ color: 'var(--color-accent)', fontSize: '0.88rem' }}
             >
               Скачать повторно

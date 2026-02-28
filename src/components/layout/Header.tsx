@@ -17,7 +17,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
         <Menu size={22} />
       </button>
       <div className="header__left">
-        <h1 className="header__title">ВСОКО</h1>
+        <h1 className="header__title">VSOKO</h1>
         <span className="header__role">{isAdmin ? 'Администратор' : 'Студент'}</span>
       </div>
       <button className="header__logout" onClick={() => logout()} disabled={isPending}>

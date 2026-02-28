@@ -32,7 +32,7 @@ export function LoginPage() {
           <div className="login-card__icon">
             <GraduationCap size={32} />
           </div>
-          <h1 className="login-card__title">ВСОКО</h1>
+          <h1 className="login-card__title">VSOKO</h1>
           <p className="login-card__subtitle">Внутренняя Система Оценки Качества Образования</p>
         </div>
         <form className="login-card__form" onSubmit={handleSubmit}>

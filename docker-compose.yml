@@ -1,0 +1,16 @@
+services:
+  frontend:
+    image: ${CI_REGISTRY_IMAGE}:${DOCKER_TAG:-latest}
+    restart: unless-stopped
+    networks:
+      - web_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vsokofront.rule=Host(`vsoko.semao0.ru`)"
+      - "traefik.http.routers.vsokofront.entrypoints=websecure"
+      - "traefik.http.routers.vsokofront.tls.certresolver=semao0resolver"
+      - "traefik.http.services.vsokofront.loadbalancer.server.port=80"
+
+networks:
+  web_network:
+    external: true

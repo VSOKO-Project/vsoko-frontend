@@ -1,0 +1,16 @@
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 1.5rem;
+}
+
+.dashboard-chart {
+  padding: 1.5rem;
+}
+
+.dashboard-chart__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0 0 1rem;
+}

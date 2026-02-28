@@ -1,0 +1,64 @@
+.feedback-form__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.88rem;
+  padding: 0.3rem 0;
+  margin-bottom: 0.75rem;
+  transition: color 0.15s;
+}
+.feedback-form__back:hover {
+  color: var(--color-primary);
+}
+
+.feedback-form__workload-info {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.feedback-form__info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  color: var(--color-text-secondary);
+}
+
+.criteria-section {
+  margin-bottom: 1.5rem;
+}
+
+.criteria-section__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-bg-secondary);
+}
+
+.criteria-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.criteria-item__name {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.feedback-form__textarea {
+  width: 100%;
+}

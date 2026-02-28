@@ -1,0 +1,25 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge--default {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+.badge--success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.badge--warning {
+  background: #fff8e1;
+  color: #f57f17;
+}
+.badge--danger {
+  background: #ffebee;
+  color: #c62828;
+}

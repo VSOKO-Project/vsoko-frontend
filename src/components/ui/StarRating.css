@@ -1,0 +1,25 @@
+.star-rating {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.star-rating__star {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--color-border);
+  transition: color 0.15s, transform 0.15s;
+}
+
+.star-rating__star:hover:not(:disabled) {
+  transform: scale(1.15);
+}
+
+.star-rating__star--active {
+  color: #fbc02d;
+}
+
+.star-rating--readonly .star-rating__star {
+  cursor: default;
+}

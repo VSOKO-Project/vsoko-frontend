@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getFeedbacks, getFeedbackById } from '../../api/feedback';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getFeedbacks, getFeedbackById, deleteFeedback } from '../../api/feedback';
 import { getTeachers } from '../../api/teachers';
 import { getDisciplines } from '../../api/disciplines';
 import { usePagination } from '../../hooks/usePagination';
@@ -8,6 +8,9 @@ import { Pagination } from '../../components/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 import { StarRating } from '../../components/ui/StarRating';
+import { Button } from '../../components/ui/Button';
+import { toast } from '../../components/ui/Toast';
+import { Trash2 } from 'lucide-react';
 import type { FeedbackDto } from '../../types';
 
 export function FeedbackListPage() {
@@ -15,6 +18,7 @@ export function FeedbackListPage() {
   const [teacherFilter, setTeacherFilter] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState('');
   const [selected, setSelected] = useState<FeedbackDto | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: teachers } = useQuery({
     queryKey: ['teachers-filter'],
@@ -34,6 +38,19 @@ export function FeedbackListPage() {
       TeacherId: teacherFilter || undefined,
       DisciplineId: disciplineFilter || undefined,
     }),
+  });
+
+  const { mutate: deleteMutate, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => deleteFeedback(id),
+    onSuccess: () => {
+      setSelected(null);
+      queryClient.invalidateQueries({ queryKey: ['feedback-list'] });
+      toast('Отзыв удалён', 'success');
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Ошибка при удалении';
+      toast(msg, 'error');
+    },
   });
 
   const handleRowClick = async (id: string) => {
@@ -110,6 +127,21 @@ export function FeedbackListPage() {
                 «{selected.comment}»
               </div>
             )}
+            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<Trash2 size={14} />}
+                loading={isDeleting}
+                onClick={() => {
+                  if (window.confirm('Удалить этот отзыв?')) {
+                    deleteMutate(selected.id);
+                  }
+                }}
+              >
+                Удалить отзыв
+              </Button>
+            </div>
           </div>
         )}
       </Modal>

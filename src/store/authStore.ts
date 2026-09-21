@@ -14,13 +14,15 @@ interface AuthState {
   clearMustChangePassword: () => void;
 }
 
+const storedAccessToken = localStorage.getItem('accessToken');
+
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
-  refreshToken: null,
-  userId: null,
-  isAdmin: false,
-  mustChangePassword: false,
-  isAuthenticated: false,
+  accessToken: storedAccessToken,
+  refreshToken: localStorage.getItem('refreshToken'),
+  userId: localStorage.getItem('userId'),
+  isAdmin: localStorage.getItem('isAdmin') === 'true',
+  mustChangePassword: localStorage.getItem('mustChangePassword') === 'true',
+  isAuthenticated: !!storedAccessToken,
 
   login: (data) => {
     localStorage.setItem('accessToken', data.accessToken);

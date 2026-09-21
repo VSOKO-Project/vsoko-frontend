@@ -14,9 +14,9 @@ export function WorkloadsPage() {
   const { page, pageSize, query, setPage, setQuery } = usePagination();
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['workloads', page, pageSize, query],
-    queryFn: () => getWorkloads({ Page: page, PageSize: pageSize, Query: query }),
+    queryFn: ({ signal }) => getWorkloads({ Page: page, PageSize: pageSize, Query: query }, signal),
   });
 
   return (
@@ -32,6 +32,11 @@ export function WorkloadsPage() {
 
       {isLoading ? (
         <Spinner />
+      ) : isError ? (
+        <div className="empty-state" role="alert">
+          <p>Не удалось загрузить нагрузки.</p>
+          <Button onClick={() => void refetch()} loading={isFetching}>Повторить</Button>
+        </div>
       ) : (
         <>
           <div className="workloads-grid">

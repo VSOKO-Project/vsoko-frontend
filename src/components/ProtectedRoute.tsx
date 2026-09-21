@@ -1,18 +1,14 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { getHomePath, useAuthStore } from '../store/authStore';
 
 export function ProtectedRoute() {
-  const { isAuthenticated, isAdmin, mustChangePassword } = useAuthStore();
+  const homePath = useAuthStore(getHomePath);
   const location = useLocation();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-  if (mustChangePassword && location.pathname !== '/change-password') {
-    return <Navigate to="/change-password" replace />;
-  }
-
-  if (!mustChangePassword && location.pathname === '/change-password') {
-    return <Navigate to={isAdmin ? '/dashboard' : '/workloads'} replace />;
+  if (homePath === '/login' ||
+      (homePath === '/change-password' && location.pathname !== homePath) ||
+      (homePath !== '/change-password' && location.pathname === '/change-password')) {
+    return <Navigate to={homePath} replace />;
   }
 
   return <Outlet />;

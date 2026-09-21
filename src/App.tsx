@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { useAuthStore } from './store/authStore';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './api/queryClient';
+import { getHomePath, useAuthStore } from './store/authStore';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
 import { AppLayout } from './components/layout/AppLayout';
@@ -21,19 +21,8 @@ import { CriteriaPage } from './pages/admin/CriteriaPage';
 import { SummariesPage } from './pages/admin/SummariesPage';
 import { ReportsPage } from './pages/admin/ReportsPage';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 30_000,
-    },
-  },
-});
-
 function AppRoutes() {
-  const { isAdmin, isAuthenticated } = useAuthStore();
-  const defaultPath = isAdmin ? '/dashboard' : '/workloads';
+  const defaultPath = useAuthStore(getHomePath);
 
   return (
     <Routes>
@@ -57,16 +46,13 @@ function AppRoutes() {
           </Route>
         </Route>
       </Route>
-      <Route path="/" element={<Navigate to={isAuthenticated ? defaultPath : '/login'} replace />} />
+      <Route path="/" element={<Navigate to={defaultPath} replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default function App() {
-  const hydrate = useAuthStore((s) => s.hydrate);
-  useEffect(() => { hydrate(); }, [hydrate]);
-
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

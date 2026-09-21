@@ -12,6 +12,7 @@ export function ChangePasswordPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (isPending) return;
 
     if (form.newPassword !== form.confirmPassword) {
       setMismatch(true);

@@ -1,4 +1,6 @@
-import axios from 'axios';
+import axios, { CanceledError, type InternalAxiosRequestConfig } from 'axios';
+import { useAuthStore } from '../store/authStore';
+import { assertCurrentSession, refreshSession, waitForRefresh } from './session';
 import { API_BASE_URL } from '../utils/constants';
 
 const api = axios.create({
@@ -6,46 +8,50 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+type SessionRequest = InternalAxiosRequestConfig & { _retry?: boolean; _sessionVersion?: number };
+
+api.interceptors.request.use(async (config: SessionRequest) => {
+  config._sessionVersion ??= useAuthStore.getState().sessionVersion;
+  await waitForRefresh();
+  assertCurrentSession(config._sessionVersion);
+  const session = useAuthStore.getState();
+  if (!session.isAuthenticated || (session.mustChangePassword && config.url !== '/Security/ChangePassword')) {
+    throw new CanceledError('Session is not ready');
   }
+  config.headers.Authorization = `Bearer ${session.accessToken}`;
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const config = response.config as SessionRequest;
+    if (config._sessionVersion !== undefined) assertCurrentSession(config._sessionVersion);
+    return response;
+  },
   async (error) => {
-    const originalRequest = error.config;
+    if (!axios.isAxiosError(error) || !error.config || axios.isCancel(error)) throw error;
+    const originalRequest = error.config as SessionRequest;
+    if (originalRequest._sessionVersion !== undefined) assertCurrentSession(originalRequest._sessionVersion);
+    const passwordRequired = error.response?.status === 403 &&
+      error.response?.data?.title === 'Password Change Required';
 
-    if (
-      error.response?.status === 403 &&
-      error.response?.data?.title === 'Password Change Required' &&
-      window.location.pathname !== '/change-password'
-    ) {
-      window.location.href = '/change-password';
-      return Promise.reject(error);
+    if (error.response?.status !== 401 && !passwordRequired) throw error;
+    if (originalRequest._retry) {
+      if (passwordRequired) useAuthStore.getState().requirePasswordChange();
+      else if (originalRequest.url !== '/Security/ChangePassword') useAuthStore.getState().logout();
+      throw error;
     }
+    originalRequest._retry = true;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post(`${API_BASE_URL}/Security/Refresh`, {
-          refresh: refreshToken,
-        });
-        const newTokens = data.data;
-        localStorage.setItem('accessToken', newTokens.accessToken);
-        localStorage.setItem('refreshToken', newTokens.refreshToken);
-        originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`;
-        return api(originalRequest);
-      } catch {
-        localStorage.clear();
-        window.location.href = '/login';
-      }
+    // Reuse a token already rotated by another request, including late 401/403 responses.
+    const session = useAuthStore.getState();
+    if (originalRequest.headers.Authorization === `Bearer ${session.accessToken}`) {
+      await refreshSession();
     }
-    return Promise.reject(error);
+    if (useAuthStore.getState().mustChangePassword && originalRequest.url !== '/Security/ChangePassword') {
+      throw error;
+    }
+    return api(originalRequest);
   }
 );
 

@@ -20,7 +20,7 @@ export function FeedbackFormPage() {
 
   const { data: workload, isLoading: wLoading, isError: wError } = useQuery({
     queryKey: ['workload', workloadId],
-    queryFn: () => getWorkloadById(workloadId),
+    queryFn: ({ signal }) => getWorkloadById(workloadId, signal),
     enabled: !!workloadId,
   });
 

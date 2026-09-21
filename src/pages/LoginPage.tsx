@@ -2,22 +2,23 @@ import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
 import { useLogin } from '../hooks/useAuth';
-import { useAuthStore } from '../store/authStore';
+import { getHomePath, useAuthStore } from '../store/authStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import './LoginPage.css';
 
 export function LoginPage() {
-  const { isAuthenticated, isAdmin } = useAuthStore();
+  const homePath = useAuthStore(getHomePath);
   const { mutate: login, isPending, error } = useLogin();
   const [form, setForm] = useState({ login: '', password: '' });
 
-  if (isAuthenticated) {
-    return <Navigate to={isAdmin ? '/dashboard' : '/workloads'} replace />;
+  if (homePath !== '/login') {
+    return <Navigate to={homePath} replace />;
   }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (isPending) return;
     login(form);
   };
 

@@ -1,5 +1,5 @@
 import api from './axios';
-import type { ApiSuccessResult, LoginQuery, LoginResultDto, LogOutQuery } from '../types';
+import type { ApiSuccessResult, ChangePasswordCommand, LoginQuery, LoginResultDto, LogOutQuery } from '../types';
 
 export async function login(data: LoginQuery): Promise<ApiSuccessResult<LoginResultDto>> {
   const response = await api.post<ApiSuccessResult<LoginResultDto>>('/Security/Login', data);
@@ -8,4 +8,8 @@ export async function login(data: LoginQuery): Promise<ApiSuccessResult<LoginRes
 
 export async function logout(data: LogOutQuery): Promise<void> {
   await api.post('/Security/LogOut', data);
+}
+
+export async function changePassword(data: ChangePasswordCommand): Promise<void> {
+  await api.post('/Security/ChangePassword', data);
 }

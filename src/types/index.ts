@@ -10,6 +10,12 @@ export interface LoginResultDto {
   expires: string;
   userId: string;
   isAdmin: boolean;
+  mustChangePassword: boolean;
+}
+
+export interface ChangePasswordCommand {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface ApiSuccessResult<T> {

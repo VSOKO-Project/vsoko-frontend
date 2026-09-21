@@ -6,10 +6,12 @@ interface AuthState {
   refreshToken: string | null;
   userId: string | null;
   isAdmin: boolean;
+  mustChangePassword: boolean;
   isAuthenticated: boolean;
   login: (data: LoginResultDto) => void;
   logout: () => void;
   hydrate: () => void;
+  clearMustChangePassword: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -17,6 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshToken: null,
   userId: null,
   isAdmin: false,
+  mustChangePassword: false,
   isAuthenticated: false,
 
   login: (data) => {
@@ -24,11 +27,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('refreshToken', data.refreshToken);
     localStorage.setItem('userId', data.userId);
     localStorage.setItem('isAdmin', String(data.isAdmin));
+    localStorage.setItem('mustChangePassword', String(data.mustChangePassword));
     set({
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
       userId: data.userId,
       isAdmin: data.isAdmin,
+      mustChangePassword: data.mustChangePassword,
       isAuthenticated: true,
     });
   },
@@ -40,6 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       refreshToken: null,
       userId: null,
       isAdmin: false,
+      mustChangePassword: false,
       isAuthenticated: false,
     });
   },
@@ -52,8 +58,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         refreshToken: localStorage.getItem('refreshToken'),
         userId: localStorage.getItem('userId'),
         isAdmin: localStorage.getItem('isAdmin') === 'true',
+        mustChangePassword: localStorage.getItem('mustChangePassword') === 'true',
         isAuthenticated: true,
       });
     }
+  },
+
+  clearMustChangePassword: () => {
+    localStorage.setItem('mustChangePassword', 'false');
+    set({ mustChangePassword: false });
   },
 }));

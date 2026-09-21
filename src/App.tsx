@@ -7,6 +7,7 @@ import { AdminRoute } from './components/AdminRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { ToastContainer } from './components/ui/Toast';
 import { LoginPage } from './pages/LoginPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { WorkloadsPage } from './pages/student/WorkloadsPage';
 import { FeedbackFormPage } from './pages/student/FeedbackFormPage';
 import { MyFeedbackPage } from './pages/student/MyFeedbackPage';
@@ -38,6 +39,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route element={<AppLayout />}>
           <Route path="/workloads" element={<WorkloadsPage />} />
           <Route path="/feedback/new" element={<FeedbackFormPage />} />

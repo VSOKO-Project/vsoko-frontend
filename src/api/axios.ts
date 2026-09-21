@@ -6,11 +6,13 @@ import { API_BASE_URL } from '../utils/constants';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 20_000,
 });
 
 type SessionRequest = InternalAxiosRequestConfig & { _retry?: boolean; _sessionVersion?: number };
 
 api.interceptors.request.use(async (config: SessionRequest) => {
+  useAuthStore.getState().syncFromStorage();
   config._sessionVersion ??= useAuthStore.getState().sessionVersion;
   await waitForRefresh();
   assertCurrentSession(config._sessionVersion);
@@ -37,6 +39,8 @@ api.interceptors.response.use(
 
     if (error.response?.status !== 401 && !passwordRequired) throw error;
     if (originalRequest._retry) {
+      // A late failure must not invalidate credentials installed by another tab.
+      if (originalRequest.headers.Authorization !== `Bearer ${useAuthStore.getState().accessToken}`) throw error;
       if (passwordRequired) useAuthStore.getState().requirePasswordChange();
       else if (originalRequest.url !== '/Security/ChangePassword') useAuthStore.getState().logout();
       throw error;

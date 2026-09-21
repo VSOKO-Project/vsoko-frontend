@@ -23,7 +23,7 @@ export function LoginPage() {
   };
 
   const errorMessage = error
-    ? ((error as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Ошибка авторизации')
+    ? ((error as { response?: { data?: { detail?: string } } }).response?.data?.detail || error.message || 'Ошибка авторизации')
     : '';
 
   return (

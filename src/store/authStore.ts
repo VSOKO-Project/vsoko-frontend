@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { LoginResultDto } from '../types';
 
+export const AUTH_STORAGE_KEY = 'vsoko.auth.v1';
+const legacyKeys = ['accessToken', 'refreshToken', 'userId', 'isAdmin', 'mustChangePassword'] as const;
+interface StoredSession {
+  id: string;
+  data: LoginResultDto;
+}
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
@@ -8,63 +14,93 @@ interface AuthState {
   isAdmin: boolean;
   mustChangePassword: boolean;
   isAuthenticated: boolean;
+  sessionId: string | null;
   sessionVersion: number;
   login: (data: LoginResultDto) => void;
   updateSession: (data: LoginResultDto) => void;
   logout: () => void;
   requirePasswordChange: () => void;
+  syncFromStorage: () => void;
 }
 
-const storageKeys = ['accessToken', 'refreshToken', 'userId', 'isAdmin', 'mustChangePassword'] as const;
+function readSession(): StoredSession | null {
+  try {
+    const session = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+    if (typeof session?.id === 'string' && typeof session.data?.accessToken === 'string' &&
+        typeof session.data?.refreshToken === 'string' && typeof session.data?.userId === 'string' &&
+        typeof session.data?.isAdmin === 'boolean' && typeof session.data?.mustChangePassword === 'boolean') {
+      return session;
+    }
+  } catch { /* Invalid storage is treated as a signed-out session. */ }
+  return null;
+}
 
-function saveSession(data: LoginResultDto) {
-  const session = {
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
-    userId: data.userId,
-    isAdmin: data.isAdmin,
-    mustChangePassword: data.mustChangePassword,
-    isAuthenticated: true,
+// Migrate once. Afterwards a session is written atomically, never as separate keys.
+if (!localStorage.getItem(AUTH_STORAGE_KEY) && localStorage.getItem('accessToken')) {
+  const refresh = localStorage.getItem('refreshToken') || '';
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+    id: `legacy:${refresh}`,
+    data: {
+      accessToken: localStorage.getItem('accessToken'), refreshToken: refresh,
+      userId: localStorage.getItem('userId'), expires: '',
+      isAdmin: localStorage.getItem('isAdmin') === 'true',
+      mustChangePassword: localStorage.getItem('mustChangePassword') === 'true',
+    },
+  }));
+}
+for (const key of legacyKeys) localStorage.removeItem(key);
+
+function stateFrom(session: StoredSession | null) {
+  return {
+    accessToken: session?.data.accessToken ?? null,
+    refreshToken: session?.data.refreshToken ?? null,
+    userId: session?.data.userId ?? null,
+    isAdmin: session?.data.isAdmin ?? false,
+    mustChangePassword: session?.data.mustChangePassword ?? false,
+    isAuthenticated: !!session,
+    sessionId: session?.id ?? null,
   };
-  for (const key of storageKeys) localStorage.setItem(key, String(session[key]));
-  return session;
 }
-
-const storedAccessToken = localStorage.getItem('accessToken');
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: storedAccessToken,
-  refreshToken: localStorage.getItem('refreshToken'),
-  userId: localStorage.getItem('userId'),
-  isAdmin: localStorage.getItem('isAdmin') === 'true',
-  mustChangePassword: localStorage.getItem('mustChangePassword') === 'true',
-  isAuthenticated: !!storedAccessToken,
+  ...stateFrom(readSession()),
   sessionVersion: 0,
-
+  syncFromStorage: () => {
+    const session = stateFrom(readSession());
+    const previous = get();
+    const changed = session.sessionId !== previous.sessionId || session.userId !== previous.userId ||
+      session.isAdmin !== previous.isAdmin;
+    set({ ...session, sessionVersion: previous.sessionVersion + Number(changed) });
+  },
   login: (data) => {
-    set({ ...saveSession(data), sessionVersion: get().sessionVersion + 1 });
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ id: crypto.randomUUID(), data }));
+    get().syncFromStorage();
   },
-
-  updateSession: (data) => set(saveSession(data)),
-
+  updateSession: (data) => {
+    const current = readSession();
+    if (!current || current.id !== get().sessionId || current.data.userId !== data.userId) return;
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ id: current.id, data }));
+    get().syncFromStorage();
+  },
   logout: () => {
-    for (const key of storageKeys) localStorage.removeItem(key);
-    set({
-      accessToken: null,
-      refreshToken: null,
-      userId: null,
-      isAdmin: false,
-      mustChangePassword: false,
-      isAuthenticated: false,
-      sessionVersion: get().sessionVersion + 1,
-    });
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    get().syncFromStorage();
   },
-
   requirePasswordChange: () => {
-    localStorage.setItem('mustChangePassword', 'true');
-    set({ mustChangePassword: true });
+    const current = readSession();
+    if (!current || current.id !== get().sessionId) return;
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+      ...current, data: { ...current.data, mustChangePassword: true },
+    }));
+    get().syncFromStorage();
   },
 }));
+
+window.addEventListener('storage', (event) => {
+  if (event.storageArea === localStorage && (event.key === AUTH_STORAGE_KEY || event.key === null)) {
+    useAuthStore.getState().syncFromStorage();
+  }
+});
 
 export function getHomePath(session: Pick<AuthState, 'isAuthenticated' | 'isAdmin' | 'mustChangePassword'>) {
   if (!session.isAuthenticated) return '/login';

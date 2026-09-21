@@ -26,7 +26,7 @@ export function ChangePasswordPage() {
   const errorMessage = mismatch
     ? 'Пароли не совпадают'
     : error
-      ? ((error as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Не удалось сменить пароль')
+      ? ((error as { response?: { data?: { detail?: string } } }).response?.data?.detail || error.message || 'Не удалось сменить пароль')
       : '';
 
   return (
@@ -48,6 +48,7 @@ export function ChangePasswordPage() {
             value={form.currentPassword}
             onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
             placeholder="Выдан вам ранее"
+            autoComplete="current-password"
             required
           />
           <Input
@@ -55,10 +56,14 @@ export function ChangePasswordPage() {
             type="password"
             value={form.newPassword}
             onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-            placeholder="Не менее 6 символов"
+            placeholder="От 6 символов, A–Z и цифра"
+            pattern="(?=.*[A-Z])(?=.*[0-9]).{6,}"
+            title="Не менее 6 символов, заглавная латинская буква и цифра"
+            autoComplete="new-password"
             minLength={6}
             required
           />
+          <p>Новый пароль: не менее 6 символов, заглавная латинская буква (A–Z) и цифра.</p>
           <Input
             label="Повторите новый пароль"
             type="password"

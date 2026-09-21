@@ -13,7 +13,7 @@ build_image:
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-      - docker builder prune -f --filter unused-for=24h
+      - docker builder prune -af
       - docker build --pull
         --build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL
         --build-arg VITE_DEFAULT_PAGE_SIZE=$VITE_DEFAULT_PAGE_SIZE

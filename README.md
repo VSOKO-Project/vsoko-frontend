@@ -1,62 +1,101 @@
-# VSOKO / Frontend
+<div align="center">
 
-> Part of the **VSOKO** education quality assessment system.
-> 📖 [Full project description and architecture →](https://github.com/VSOKO-Project)
+<a href="https://gitlab.com/vsoko"><img src="https://gitlab.com/uploads/-/system/group/avatar/124661769/logo.png" width="72" alt="VSOKO"></a>
 
-Web UI for the VSOKO platform: students submit feedback on teachers and
-disciplines, admins manage criteria, review ratings, generate PDF reports,
-and read AI-generated summaries.
+# 🖥️ vsoko-frontend
 
-## Stack
+### Web UI: feedback forms for students; criteria, ratings, reports and AI summaries for administrators
 
-- **React 19 + TypeScript**, built with **Vite**
-- **TanStack Query** — server-state fetching/caching against the backend API
-- **Zustand** — client-side state (auth session, UI state)
-- **React Router** — routing between student/admin areas
-- **Axios** — HTTP client
-- **Recharts** — rating/report charts
-- **lucide-react** — icons
+[![pipeline](https://gitlab.com/vsoko/vsoko-frontend/badges/main/pipeline.svg)](https://gitlab.com/vsoko/vsoko-frontend/-/pipelines)
+![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?logo=reactquery&logoColor=white)
+![nginx](https://img.shields.io/badge/nginx-009639?logo=nginx&logoColor=white)
 
-## Pages
+<sub>Part of <a href="https://gitlab.com/vsoko"><b>VSOKO</b></a> — an education quality assessment platform running in production at a university</sub>
 
-**Student:** submit feedback (`FeedbackFormPage`), view own submitted
-feedback (`MyFeedbackPage`), browse workloads (`WorkloadsPage`)
+</div>
 
-**Admin:** dashboard, feedback list, criteria management, teacher/discipline
-ratings, reports, AI-generated summaries
+---
 
-## Running locally
+## Role in the system
 
-```bash
-cp .env.example .env   # VITE_API_BASE_URL, VITE_DEFAULT_PAGE_SIZE
-npm install
-npm run dev             # http://localhost:3000
+The single-page app for both audiences. Students see their workloads and rate them. Administrators
+manage evaluation criteria, browse ratings and feedback, download the PDF report and read AI summaries.
+The app talks only to [vsoko-api](https://gitlab.com/vsoko/vsoko-api). It is served as static files by nginx
+behind the Traefik proxy from [vsoko-infra](https://gitlab.com/vsoko/vsoko-infra).
+
+```mermaid
+flowchart LR
+  U[browser] -->|vsoko.semao0.ru| T[Traefik]
+  T --> S((nginx<br>vsoko-frontend))
+  U -->|REST + JWT| API[vsoko-api]
 ```
 
-Environment variables:
+## Features
 
-| Var | Purpose | Default |
+- **Role-based areas** — separate navigation for students and administrators; routes guarded by `ProtectedRoute` / `AdminRoute`.
+- **Forced password change** — accounts with a temporary password are sent to `/change-password` until they update it.
+- **Feedback forms** — rate a workload on every criterion and leave a comment; view and edit your own feedback.
+- **Admin dashboard** — teacher and discipline ratings with charts, feedback list, criteria management, PDF report download, AI summaries.
+- **Session handling** — JWT with refresh via axios, server state in TanStack Query, session in Zustand.
+
+### Routes
+
+| Area | Path | Page |
 | --- | --- | --- |
-| `VITE_API_BASE_URL` | backend API base URL | `http://localhost:8000/api` |
-| `VITE_DEFAULT_PAGE_SIZE` | default page size for paged lists | `10` |
+| Public | `/login` | sign-in |
+| Any user | `/change-password` | password change |
+| Student | `/workloads`, `/feedback/new`, `/my-feedback` | workloads, feedback form, own feedback |
+| Admin | `/dashboard` | overview |
+| Admin | `/teachers`, `/teachers/rating`, `/disciplines`, `/disciplines/rating` | lists and ratings |
+| Admin | `/feedback`, `/criteria`, `/summaries`, `/reports` | feedback, criteria, AI summaries, PDF report |
 
-## Docker
+## Quick start
 
-Multi-stage build (node → nginx), API URL baked in at build time:
+**Production** — CI builds the image and deploys it with `docker-compose.yml`; requires `web_network` and Traefik from
+[vsoko-infra](https://gitlab.com/vsoko/vsoko-infra). The app is then available at https://vsoko.semao0.ru.
+
+**Standalone image** — the variables are baked in at build time:
 
 ```bash
-docker build --build-arg VITE_API_BASE_URL=http://localhost:8000/api -t vsoko-frontend .
+docker build \
+  --build-arg VITE_API_BASE_URL=http://localhost:8000/api \
+  --build-arg VITE_DEFAULT_PAGE_SIZE=10 \
+  -t vsoko-frontend .
 docker run --rm -p 8001:80 vsoko-frontend
 ```
 
-## Docker Compose
+**Local development:**
 
-`docker-compose.yml` runs the image with Traefik labels (host
-`vsoko.semao0.ru`, TLS via `semao0resolver`). Requires the external network
-`web_network`.
+```bash
+npm install
+echo "VITE_API_BASE_URL=http://localhost:8000/api" >  .env.local
+echo "VITE_DEFAULT_PAGE_SIZE=10"                     >> .env.local
+npm run dev      # http://localhost:5173
+npm run build    # tsc && vite build
+```
 
-## CI/CD (GitLab)
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_BASE_URL` | vsoko-api base URL |
+| `VITE_DEFAULT_PAGE_SIZE` | page size for paged lists |
 
-`.gitlab-ci.yml` follows the same convention as the backend: build/typecheck,
-then SSH deploy to staging (`stage` branch) / production (`main` branch) via
-`docker compose pull && up -d`.
+## Structure
+
+```text
+vsoko-frontend/
+├── Dockerfile             # node build → nginx
+├── nginx.conf             # SPA fallback, gzip, static asset caching
+└── src/
+    ├── api/               # axios client and endpoint wrappers
+    ├── components/        # layout, ui, ProtectedRoute, AdminRoute, Pagination, SearchInput
+    ├── hooks/             # TanStack Query hooks, pagination
+    ├── pages/             # LoginPage, ChangePasswordPage
+    │   ├── student/       # workloads, feedback form, my feedback
+    │   └── admin/         # dashboard, ratings, teachers, disciplines, criteria, feedback, summaries, reports
+    ├── store/             # Zustand stores
+    ├── types/             # API types
+    └── utils/             # constants, helpers
+```

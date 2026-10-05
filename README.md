@@ -1,30 +1,15 @@
-<div align="center">
+# VSOKO Frontend
 
-<a href="https://gitlab.com/vsoko"><img src="https://gitlab.com/uploads/-/system/group/avatar/124661769/logo.png" width="72" alt="VSOKO"></a>
+Web app: feedback forms for students; criteria, ratings, reports, and AI summaries for admins.
 
-# 🖥️ vsoko-frontend
+Stack: React 19, TypeScript, Vite, TanStack Query, nginx.
 
-### Web UI: feedback forms for students; criteria, ratings, reports and AI summaries for administrators
+## What it does
 
-[![pipeline](https://gitlab.com/vsoko/vsoko-frontend/badges/main/pipeline.svg)](https://gitlab.com/vsoko/vsoko-frontend/-/pipelines)
-![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
-![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?logo=reactquery&logoColor=white)
-![nginx](https://img.shields.io/badge/nginx-009639?logo=nginx&logoColor=white)
-
-<sub>Part of <a href="https://gitlab.com/vsoko"><b>VSOKO</b></a> — an education quality assessment platform running in production at a university</sub>
-
-</div>
-
----
-
-## Role in the system
-
-The single-page app for both audiences. Students see their workloads and rate them. Administrators
-manage evaluation criteria, browse ratings and feedback, download the PDF report and read AI summaries.
-The app talks only to [vsoko-api](https://gitlab.com/vsoko/vsoko-api). It is served as static files by nginx
-behind the Traefik proxy from [vsoko-infra](https://gitlab.com/vsoko/vsoko-infra).
+One single-page app for both students and admins. Students see their workloads and
+rate them. Admins manage criteria, browse ratings and feedback, download the PDF
+report, and read AI summaries. The app only talks to `vsoko-api` and is served by
+nginx behind the Traefik proxy from `vsoko-infra`.
 
 ```mermaid
 flowchart LR
@@ -35,11 +20,11 @@ flowchart LR
 
 ## Features
 
-- **Role-based areas** — separate navigation for students and administrators; routes guarded by `ProtectedRoute` / `AdminRoute`.
-- **Forced password change** — accounts with a temporary password are sent to `/change-password` until they update it.
-- **Feedback forms** — rate a workload on every criterion and leave a comment; view and edit your own feedback.
-- **Admin dashboard** — teacher and discipline ratings with charts, feedback list, criteria management, PDF report download, AI summaries.
-- **Session handling** — JWT with refresh via axios, server state in TanStack Query, session in Zustand.
+- **Separate areas by role** — students and admins get their own navigation; routes are guarded by `ProtectedRoute` / `AdminRoute`.
+- **Forced password change** — accounts with a temporary password are sent to `/change-password` until they set a new one.
+- **Feedback forms** — score a workload on every criterion and leave a comment; view and edit your own feedback.
+- **Admin dashboard** — teacher and course ratings with charts, feedback list, criteria, PDF report, AI summaries.
+- **Sessions** — JWT with refresh through axios, server data in TanStack Query, session in Zustand.
 
 ### Routes
 
@@ -54,10 +39,9 @@ flowchart LR
 
 ## Quick start
 
-**Production** — CI builds the image and deploys it with `docker-compose.yml`; requires `web_network` and Traefik from
-[vsoko-infra](https://gitlab.com/vsoko/vsoko-infra). The app is then available at https://vsoko.semao0.ru.
+### With Docker
 
-**Standalone image** — the variables are baked in at build time:
+The API URL and page size are baked in at build time:
 
 ```bash
 docker build \
@@ -67,20 +51,18 @@ docker build \
 docker run --rm -p 8001:80 vsoko-frontend
 ```
 
-**Local development:**
+In production it runs from `docker-compose.yml` behind Traefik from `vsoko-infra`
+and is available at https://vsoko.semao0.ru.
+
+### Locally
 
 ```bash
 npm install
 echo "VITE_API_BASE_URL=http://localhost:8000/api" >  .env.local
 echo "VITE_DEFAULT_PAGE_SIZE=10"                     >> .env.local
 npm run dev      # http://localhost:5173
-npm run build    # tsc && vite build
+npm run build
 ```
-
-| Variable | Purpose |
-| --- | --- |
-| `VITE_API_BASE_URL` | vsoko-api base URL |
-| `VITE_DEFAULT_PAGE_SIZE` | page size for paged lists |
 
 ## Structure
 

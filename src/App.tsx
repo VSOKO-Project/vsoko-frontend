@@ -20,6 +20,8 @@ import { DisciplinesPage } from './pages/admin/DisciplinesPage';
 import { CriteriaPage } from './pages/admin/CriteriaPage';
 import { SummariesPage } from './pages/admin/SummariesPage';
 import { ReportsPage } from './pages/admin/ReportsPage';
+import { PeriodsPage } from './pages/admin/PeriodsPage';
+import { ImportPage } from './pages/admin/ImportPage';
 
 function AppRoutes() {
   const defaultPath = useAuthStore(getHomePath);
@@ -43,6 +45,8 @@ function AppRoutes() {
             <Route path="/criteria" element={<CriteriaPage />} />
             <Route path="/summaries" element={<SummariesPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/periods" element={<PeriodsPage />} />
+            <Route path="/import" element={<ImportPage />} />
           </Route>
         </Route>
       </Route>

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Star, BookOpen, MessageSquare, Users,
-  GraduationCap, ListChecks, Brain, FileText, ClipboardList,
+  GraduationCap, ListChecks, Brain, FileText, ClipboardList, Upload, CalendarRange,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import './Sidebar.css';
@@ -26,6 +26,8 @@ const adminLinks = [
   { to: '/criteria', icon: ListChecks, label: 'Критерии' },
   { to: '/summaries', icon: Brain, label: 'Сводки (AI)' },
   { to: '/reports', icon: FileText, label: 'Отчёты' },
+  { to: '/periods', icon: CalendarRange, label: 'Периоды' },
+  { to: '/import', icon: Upload, label: 'Импорт' },
 ];
 
 export function Sidebar({ open, onClose }: SidebarProps) {

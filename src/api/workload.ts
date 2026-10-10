@@ -5,6 +5,7 @@ interface PaginationParams {
   Page?: number;
   PageSize?: number;
   Query?: string;
+  PeriodId?: string;
 }
 
 export async function getWorkloads(params: PaginationParams, signal?: AbortSignal): Promise<PagedResultDto<WorkloadDto>> {

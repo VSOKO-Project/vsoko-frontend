@@ -1,5 +1,5 @@
 import api from './axios';
-import type { ApiSuccessResult, DisciplineDto, PagedResultDto, RatingDto } from '../types';
+import type { ApiSuccessResult, DisciplineDto, PagedResultDto, RatingDto, PeriodFilterParams } from '../types';
 
 interface PaginationParams {
   Page?: number;
@@ -12,7 +12,7 @@ export async function getDisciplines(params: PaginationParams): Promise<PagedRes
   return response.data.data;
 }
 
-export async function getDisciplinesRating(params: PaginationParams): Promise<PagedResultDto<RatingDto>> {
+export async function getDisciplinesRating(params: PaginationParams & PeriodFilterParams): Promise<PagedResultDto<RatingDto>> {
   const response = await api.get<ApiSuccessResult<PagedResultDto<RatingDto>>>('/Disciplines/rating', { params });
   return response.data.data;
 }

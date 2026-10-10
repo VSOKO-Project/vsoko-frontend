@@ -5,12 +5,15 @@ import { generateReport } from '../../api/report';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { toast } from '../../components/ui/Toast';
+import { PeriodSelect } from '../../components/PeriodSelect';
+import { usePeriodFilter } from '../../store/periodStore';
 
 export function ReportsPage() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const period = usePeriodFilter();
 
   const { mutate, isPending } = useMutation({
-    mutationFn: generateReport,
+    mutationFn: () => generateReport(period),
     onSuccess: (blob) => {
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
@@ -42,8 +45,12 @@ export function ReportsPage() {
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ margin: '0 0 0.25rem', color: 'var(--color-primary)' }}>Отчёт VSOKO</h3>
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>
-              Сформировать полный отчёт по всем оценкам
+              Сформировать отчёт по оценкам за выбранный период
             </p>
+          </div>
+          <div className="form-group" style={{ width: '100%' }}>
+            <label className="form-label">Период</label>
+            <PeriodSelect />
           </div>
           <Button onClick={() => mutate()} loading={isPending} icon={<Download size={18} />} size="lg">
             Сгенерировать отчёт

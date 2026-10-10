@@ -79,12 +79,77 @@ export interface StudentDto {
   group: StudentGroupDto;
 }
 
+// === Academic period ===
+export type Term = "Autumn" | "Spring";
+
+export interface PeriodDto {
+  id: string;
+  startYear: number;
+  term: Term;
+  title: string;
+  isFeedbackOpen: boolean;
+}
+
+export interface PeriodListItemDto extends PeriodDto {
+  workloadCount: number;
+  feedbackCount: number;
+}
+
+export interface SuggestedPeriodDto {
+  id: string | null;
+  startYear: number;
+  term: Term;
+  title: string;
+  exists: boolean;
+  isCurrent: boolean;
+}
+
+/** Фильтр админских выборок: конкретный семестр или весь учебный год. Без полей — за всё время. */
+export interface PeriodFilterParams {
+  PeriodId?: string;
+  StartYear?: number;
+}
+
 // === Workload ===
 export interface WorkloadDto {
   id: string;
   teacher: TeacherDto;
   discipline: DisciplineDto;
   group: StudentGroupDto;
+  period: PeriodDto;
+}
+
+// === Import ===
+export interface ImportCountDto {
+  create: number;
+  existing: number;
+}
+
+export interface ImportIssueDto {
+  sheet: string;
+  row: number;
+  message: string;
+}
+
+export interface ImportReportDto {
+  period: {
+    id: string | null;
+    startYear: number;
+    term: Term;
+    title: string;
+    willBeCreated: boolean;
+  };
+  summary: {
+    groups: ImportCountDto;
+    students: ImportCountDto;
+    teachers: ImportCountDto;
+    disciplines: ImportCountDto;
+    workloads: ImportCountDto;
+  };
+  errors: ImportIssueDto[];
+  warnings: ImportIssueDto[];
+  createdGroupIds: string[] | null;
+  studentGroupIds: string[] | null;
 }
 
 // === Feedback ===

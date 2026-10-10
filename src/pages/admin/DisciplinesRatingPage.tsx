@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDisciplinesRating } from '../../api/disciplines';
 import { getDisciplineSummary } from '../../api/summaries';
 import { usePagination } from '../../hooks/usePagination';
 import { SearchInput } from '../../components/SearchInput';
+import { PeriodSelect } from '../../components/PeriodSelect';
+import { usePeriodFilter, usePeriodFilterStore } from '../../store/periodStore';
 import { Pagination } from '../../components/Pagination';
 import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
@@ -11,17 +13,21 @@ import { Badge } from '../../components/ui/Badge';
 import { formatGrade, getGradeColor } from '../../utils/formatters';
 
 export function DisciplinesRatingPage() {
-  const { page, pageSize, query, setPage, setQuery } = usePagination();
+  const { page, pageSize, query, setPage, setQuery, resetPage } = usePagination();
+  const periodValue = usePeriodFilterStore((s) => s.value);
+  const period = usePeriodFilter();
+
+  useEffect(() => resetPage(), [periodValue, resetPage]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['disciplines-rating', page, pageSize, query],
-    queryFn: () => getDisciplinesRating({ Page: page, PageSize: pageSize, Query: query }),
+    queryKey: ['disciplines-rating', page, pageSize, query, period],
+    queryFn: () => getDisciplinesRating({ Page: page, PageSize: pageSize, Query: query, ...period }),
   });
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ['discipline-summary', selectedId],
-    queryFn: () => getDisciplineSummary(selectedId!),
+    queryKey: ['discipline-summary', selectedId, period],
+    queryFn: () => getDisciplineSummary(selectedId!, period),
     enabled: !!selectedId,
   });
 
@@ -40,6 +46,7 @@ export function DisciplinesRatingPage() {
 
       <div className="toolbar">
         <SearchInput value={query} onChange={setQuery} placeholder="Поиск дисциплины..." />
+        <PeriodSelect />
       </div>
 
       {isLoading ? (

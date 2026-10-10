@@ -7,6 +7,8 @@ import { getTeacherSummary, getDisciplineSummary } from '../../api/summaries';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
+import { PeriodSelect } from '../../components/PeriodSelect';
+import { usePeriodFilter } from '../../store/periodStore';
 
 type Mode = 'teacher' | 'discipline';
 
@@ -14,6 +16,9 @@ export function SummariesPage() {
   const [mode, setMode] = useState<Mode>('teacher');
   const [selectedId, setSelectedId] = useState('');
   const [fetchId, setFetchId] = useState<string | null>(null);
+  const period = usePeriodFilter();
+  // Сводку генерирует ИИ, поэтому период фиксируется по кнопке, а не при каждой смене фильтра.
+  const [fetchPeriod, setFetchPeriod] = useState(period);
 
   const { data: teachers } = useQuery({
     queryKey: ['teachers-list'],
@@ -26,13 +31,15 @@ export function SummariesPage() {
   });
 
   const { data: summary, isLoading: summaryLoading, isFetching } = useQuery({
-    queryKey: ['summary', mode, fetchId],
-    queryFn: () => mode === 'teacher' ? getTeacherSummary(fetchId!) : getDisciplineSummary(fetchId!),
+    queryKey: ['summary', mode, fetchId, fetchPeriod],
+    queryFn: () => mode === 'teacher' ? getTeacherSummary(fetchId!, fetchPeriod) : getDisciplineSummary(fetchId!, fetchPeriod),
     enabled: !!fetchId,
   });
 
   const handleGenerate = () => {
-    if (selectedId) setFetchId(selectedId);
+    if (!selectedId) return;
+    setFetchId(selectedId);
+    setFetchPeriod(period);
   };
 
   return (
@@ -65,6 +72,10 @@ export function SummariesPage() {
                 : disciplines?.items.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)
               }
             </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Период</label>
+            <PeriodSelect />
           </div>
           <Button onClick={handleGenerate} disabled={!selectedId} loading={isFetching} icon={<Brain size={18} />}>
             Сгенерировать

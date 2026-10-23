@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Download, FileSpreadsheet, KeyRound, Upload } from 'lucide-react';
 import {
-  applyImport, downloadCredentials, downloadImportTemplate, getImportErrorReport, getImportGroups, previewImport,
+  applyImport, downloadCredentials, downloadImportTemplate, exportPeriod, getImportErrorReport, getImportGroups,
+  getPeriodTeachers, previewImport,
 } from '../../api/import';
 import { getApiErrorMessage } from '../../api/errors';
 import { getSuggestedPeriods } from '../../api/periods';
@@ -11,7 +12,7 @@ import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { toast } from '../../components/ui/Toast';
 import { saveBlob } from '../../utils/download';
-import type { ImportIssueDto, ImportReportDto, Term } from '../../types';
+import type { ImportIssueDto, ImportReportDto, ImportWorkloadDto, Term } from '../../types';
 import './AdminPages.css';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -56,6 +57,33 @@ function IssuesTable({ title, issues, kind }: { title: string; issues: ImportIss
   );
 }
 
+function DeletionsTable({ workloads }: { workloads: ImportWorkloadDto[] }) {
+  if (workloads.length === 0) return null;
+  return (
+    <div className="table-wrapper issues-table issues-table--deletions">
+      <table>
+        <caption>Будет удалено из нагрузки: {workloads.length}</caption>
+        <thead>
+          <tr>
+            <th>Преподаватель</th>
+            <th>Дисциплина</th>
+            <th>Группа</th>
+          </tr>
+        </thead>
+        <tbody>
+          {workloads.map((w, i) => (
+            <tr key={i}>
+              <td>{w.teacher}</td>
+              <td>{w.discipline}</td>
+              <td>{w.group}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ReportSummary({ report }: { report: ImportReportDto }) {
   return (
     <div className="import-summary">
@@ -65,6 +93,9 @@ function ReportSummary({ report }: { report: ImportReportDto }) {
           <div className="import-summary__values">
             <span><strong>{report.summary[key].create}</strong>создать</span>
             <span><strong>{report.summary[key].existing}</strong>уже есть</span>
+            {report.summary[key].delete > 0 && (
+              <span className="import-summary__delete"><strong>{report.summary[key].delete}</strong>удалить</span>
+            )}
           </div>
         </div>
       ))}
@@ -84,6 +115,8 @@ export function ImportPage() {
   const [applyErrorReport, setApplyErrorReport] = useState<ImportReportDto | null>(null);
   const [applied, setApplied] = useState<ImportReportDto | null>(null);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
+  const [teacherSearch, setTeacherSearch] = useState('');
 
   const { data: suggested, isLoading: suggestedLoading } = useQuery({
     queryKey: ['suggested-periods'],
@@ -95,6 +128,14 @@ export function ImportPage() {
     const current = suggested.find((p) => p.isCurrent) ?? suggested[0];
     if (current) setPeriodKey(`${current.startYear}:${current.term}`);
   }, [suggested, periodKey]);
+
+  const selectedPeriod = suggested?.find((p) => `${p.startYear}:${p.term}` === periodKey);
+
+  const { data: periodTeachers } = useQuery({
+    queryKey: ['import-teachers', periodKey],
+    queryFn: ({ signal }) => getPeriodTeachers(parsePeriodKey(periodKey), signal),
+    enabled: !!selectedPeriod?.exists,
+  });
 
   const {
     data: preview, isFetching: previewLoading, error: previewError,
@@ -119,7 +160,7 @@ export function ImportPage() {
       setApplied(report);
       setFile(null);
       setApplyErrorReport(null);
-      for (const key of ['periods', 'suggested-periods', 'import-groups', 'workloads', 'teachers-rating', 'disciplines-rating']) {
+      for (const key of ['periods', 'suggested-periods', 'import-groups', 'import-teachers', 'workloads', 'teachers-rating', 'disciplines-rating']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
       toast('Импорт выполнен', 'success');
@@ -135,6 +176,15 @@ export function ImportPage() {
     mutationFn: (groupIds: string[]) => downloadCredentials(groupIds),
     onSuccess: (blob) => saveBlob(blob, 'vsoko-credentials.xlsx'),
     onError: () => toast('Не удалось выгрузить логины и пароли', 'error'),
+  });
+
+  const { mutate: downloadPeriod, isPending: downloadingPeriod } = useMutation({
+    mutationFn: () => exportPeriod(parsePeriodKey(periodKey), selectedTeachers),
+    onSuccess: (blob) => {
+      const { startYear, term } = parsePeriodKey(periodKey);
+      saveBlob(blob, `vsoko-${startYear}-${term.toLowerCase()}.xlsx`);
+    },
+    onError: (err) => toast(getApiErrorMessage(err, 'Не удалось выгрузить данные семестра'), 'error'),
   });
 
   const { mutate: downloadTemplate, isPending: downloadingTemplate } = useMutation({
@@ -171,6 +221,12 @@ export function ImportPage() {
   const toggleGroup = (id: string) =>
     setSelectedGroups((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
 
+  const toggleTeacher = (id: string) =>
+    setSelectedTeachers((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+
+  const search = teacherSearch.trim().toLowerCase();
+  const visibleTeachers = periodTeachers?.filter((t) => t.fullName.toLowerCase().includes(search));
+
   return (
     <div>
       <div className="page-header">
@@ -179,32 +235,25 @@ export function ImportPage() {
       </div>
 
       <Card className="import-section">
-        <h2 className="import-section__title">1. Шаблон</h2>
+        <h2 className="import-section__title">1. Семестр и файл</h2>
         <p className="import-section__hint">
-          Листы «Студенты» и «Нагрузка». Можно заполнить любой из них или оба.
-          Импорт только добавляет данные: существующие записи пропускаются.
+          Скачайте нагрузку семестра, поправьте её в Excel и загрузите обратно: новые строки добавятся,
+          удалённые — уберутся из нагрузки. Нагрузка с отзывами не удаляется. Для нового семестра начните с шаблона
+          или скачайте прошлый семестр: в другой семестр файл только добавляет.
         </p>
-        <Button
-          variant="secondary"
-          icon={<FileSpreadsheet size={18} />}
-          loading={downloadingTemplate}
-          onClick={() => downloadTemplate()}
-        >
-          Скачать шаблон
-        </Button>
-      </Card>
-
-      <Card className="import-section">
-        <h2 className="import-section__title">2. Загрузка файла</h2>
-        <p className="import-section__hint">Сначала файл проверяется, в базу ничего не пишется до нажатия «Импортировать».</p>
 
         <div className="form-group" style={{ maxWidth: 360, marginBottom: '1rem' }}>
-          <label className="form-label" htmlFor="import-period">Семестр нагрузки</label>
+          <label className="form-label" htmlFor="import-period">Семестр</label>
           {suggestedLoading ? <Spinner /> : (
             <select
               id="import-period"
               value={periodKey}
-              onChange={(e) => { setPeriodKey(e.target.value); setApplyErrorReport(null); }}
+              onChange={(e) => {
+                setPeriodKey(e.target.value);
+                setApplyErrorReport(null);
+                setSelectedTeachers([]);
+                setTeacherSearch('');
+              }}
             >
               {suggested?.map((p) => (
                 <option key={`${p.startYear}:${p.term}`} value={`${p.startYear}:${p.term}`}>
@@ -214,6 +263,62 @@ export function ImportPage() {
             </select>
           )}
         </div>
+
+        {selectedPeriod?.exists && periodTeachers && periodTeachers.length > 0 && (
+          <details className="teacher-filter">
+            <summary>
+              {selectedTeachers.length > 0
+                ? `Выбрано преподавателей: ${selectedTeachers.length}`
+                : 'Все преподаватели — выбрать отдельных'}
+            </summary>
+            <input
+              type="search"
+              placeholder="Поиск по ФИО"
+              value={teacherSearch}
+              onChange={(e) => setTeacherSearch(e.target.value)}
+            />
+            <div className="group-picker">
+              {visibleTeachers?.map((t) => (
+                <label key={t.id}>
+                  <input type="checkbox" checked={selectedTeachers.includes(t.id)} onChange={() => toggleTeacher(t.id)} />
+                  {t.fullName}
+                </label>
+              ))}
+              {visibleTeachers?.length === 0 && <span className="import-section__hint">Никого не нашлось</span>}
+            </div>
+            {selectedTeachers.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setSelectedTeachers([])}>Сбросить выбор</Button>
+            )}
+          </details>
+        )}
+
+        <div className="import-actions">
+          {selectedPeriod?.exists && (
+            <Button
+              icon={<Download size={18} />}
+              loading={downloadingPeriod}
+              onClick={() => downloadPeriod()}
+            >
+              Скачать данные семестра
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            icon={<FileSpreadsheet size={18} />}
+            loading={downloadingTemplate}
+            onClick={() => downloadTemplate()}
+          >
+            Пустой шаблон
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="import-section">
+        <h2 className="import-section__title">2. Загрузка файла</h2>
+        <p className="import-section__hint">
+          Нагрузка загрузится в семестр <strong>{selectedPeriod?.title ?? '—'}</strong>.
+          Сначала файл проверяется, в базу ничего не пишется до нажатия «Импортировать».
+        </p>
 
         <div
           className={`dropzone ${dragActive ? 'dropzone--active' : ''}`}
@@ -262,6 +367,7 @@ export function ImportPage() {
                 {report.period.willBeCreated && ' — будет создан, сбор отзывов в нём закрыт'}
               </p>
               <ReportSummary report={report} />
+              <DeletionsTable workloads={report.workloadsToDelete} />
               <IssuesTable title="Ошибки" issues={report.errors} kind="errors" />
               <IssuesTable title="Предупреждения" issues={report.warnings} kind="warnings" />
               {hasErrors && (

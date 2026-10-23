@@ -1,6 +1,6 @@
 import axios from 'axios';
 import api from './axios';
-import type { ApiSuccessResult, ImportReportDto, StudentGroupDto, Term } from '../types';
+import type { ApiSuccessResult, ImportReportDto, StudentGroupDto, TeacherDto, Term } from '../types';
 
 export interface ImportParams {
   file: File;
@@ -22,6 +22,26 @@ const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };
 export async function downloadImportTemplate(): Promise<Blob> {
   const response = await api.get('/Import/template', { responseType: 'blob' });
   return response.data;
+}
+
+export interface PeriodParams {
+  startYear: number;
+  term: Term;
+}
+
+/** Нагрузка семестра в формате импорта. Без teacherIds — вся нагрузка. */
+export async function exportPeriod({ startYear, term }: PeriodParams, teacherIds: string[]): Promise<Blob> {
+  const response = await api.get('/Import/export', {
+    params: { startYear, term, teacherIds },
+    paramsSerializer: { indexes: null },
+    responseType: 'blob',
+  });
+  return response.data;
+}
+
+export async function getPeriodTeachers({ startYear, term }: PeriodParams, signal?: AbortSignal): Promise<TeacherDto[]> {
+  const response = await api.get<ApiSuccessResult<TeacherDto[]>>('/Import/teachers', { params: { startYear, term }, signal });
+  return response.data.data;
 }
 
 export async function previewImport(params: ImportParams, signal?: AbortSignal): Promise<ImportReportDto> {

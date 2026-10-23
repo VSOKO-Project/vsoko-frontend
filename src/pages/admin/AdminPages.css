@@ -66,6 +66,27 @@
   color: var(--color-primary);
 }
 
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.teacher-filter {
+  margin-bottom: 1rem;
+}
+
+.teacher-filter summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.teacher-filter input[type='search'] {
+  max-width: 360px;
+  margin-bottom: 0.75rem;
+}
+
 .import-section__hint {
   margin: 0 0 1rem;
   font-size: 0.88rem;
@@ -140,6 +161,11 @@
   color: #b26a00;
 }
 
+.issues-table--deletions td,
+.import-summary__delete {
+  color: #c62828;
+}
+
 .issues-table caption {
   text-align: left;
   font-weight: 600;
@@ -164,5 +190,25 @@
 }
 
 .group-picker input {
+  width: auto;
+}
+
+.merge-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.merge-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.merge-options input {
   width: auto;
 }

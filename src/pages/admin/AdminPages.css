@@ -161,6 +161,11 @@
   color: #b26a00;
 }
 
+.issues-table--deletions td,
+.import-summary__delete {
+  color: #c62828;
+}
+
 .issues-table caption {
   text-align: left;
   font-weight: 600;

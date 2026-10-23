@@ -12,7 +12,7 @@ import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { toast } from '../../components/ui/Toast';
 import { saveBlob } from '../../utils/download';
-import type { ImportIssueDto, ImportReportDto, Term } from '../../types';
+import type { ImportIssueDto, ImportReportDto, ImportWorkloadDto, Term } from '../../types';
 import './AdminPages.css';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -57,6 +57,33 @@ function IssuesTable({ title, issues, kind }: { title: string; issues: ImportIss
   );
 }
 
+function DeletionsTable({ workloads }: { workloads: ImportWorkloadDto[] }) {
+  if (workloads.length === 0) return null;
+  return (
+    <div className="table-wrapper issues-table issues-table--deletions">
+      <table>
+        <caption>Будет удалено из нагрузки: {workloads.length}</caption>
+        <thead>
+          <tr>
+            <th>Преподаватель</th>
+            <th>Дисциплина</th>
+            <th>Группа</th>
+          </tr>
+        </thead>
+        <tbody>
+          {workloads.map((w, i) => (
+            <tr key={i}>
+              <td>{w.teacher}</td>
+              <td>{w.discipline}</td>
+              <td>{w.group}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ReportSummary({ report }: { report: ImportReportDto }) {
   return (
     <div className="import-summary">
@@ -66,6 +93,9 @@ function ReportSummary({ report }: { report: ImportReportDto }) {
           <div className="import-summary__values">
             <span><strong>{report.summary[key].create}</strong>создать</span>
             <span><strong>{report.summary[key].existing}</strong>уже есть</span>
+            {report.summary[key].delete > 0 && (
+              <span className="import-summary__delete"><strong>{report.summary[key].delete}</strong>удалить</span>
+            )}
           </div>
         </div>
       ))}
@@ -207,8 +237,9 @@ export function ImportPage() {
       <Card className="import-section">
         <h2 className="import-section__title">1. Семестр и файл</h2>
         <p className="import-section__hint">
-          Скачайте нагрузку семестра, поправьте её в Excel и загрузите обратно. Для нового семестра начните с шаблона.
-          Импорт только добавляет данные: существующие записи пропускаются.
+          Скачайте нагрузку семестра, поправьте её в Excel и загрузите обратно: новые строки добавятся,
+          удалённые — уберутся из нагрузки. Нагрузка с отзывами не удаляется. Для нового семестра начните с шаблона
+          или скачайте прошлый семестр: в другой семестр файл только добавляет.
         </p>
 
         <div className="form-group" style={{ maxWidth: 360, marginBottom: '1rem' }}>
@@ -336,6 +367,7 @@ export function ImportPage() {
                 {report.period.willBeCreated && ' — будет создан, сбор отзывов в нём закрыт'}
               </p>
               <ReportSummary report={report} />
+              <DeletionsTable workloads={report.workloadsToDelete} />
               <IssuesTable title="Ошибки" issues={report.errors} kind="errors" />
               <IssuesTable title="Предупреждения" issues={report.warnings} kind="warnings" />
               {hasErrors && (

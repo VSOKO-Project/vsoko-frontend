@@ -123,6 +123,13 @@ export interface WorkloadDto {
 export interface ImportCountDto {
   create: number;
   existing: number;
+  delete: number;
+}
+
+export interface ImportWorkloadDto {
+  teacher: string;
+  discipline: string;
+  group: string;
 }
 
 export interface ImportIssueDto {
@@ -148,6 +155,7 @@ export interface ImportReportDto {
   };
   errors: ImportIssueDto[];
   warnings: ImportIssueDto[];
+  workloadsToDelete: ImportWorkloadDto[];
   createdGroupIds: string[] | null;
   studentGroupIds: string[] | null;
 }

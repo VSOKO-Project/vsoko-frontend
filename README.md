@@ -9,11 +9,11 @@ Stack: React 19, TypeScript, Vite, TanStack Query, nginx.
 One single-page app for both students and admins. Students see their workloads and
 rate them. Admins manage criteria, browse ratings and feedback, download the PDF
 report, and read AI summaries. The app only talks to `vsoko-api` and is served by
-nginx behind the Traefik proxy from `vsoko-infra`.
+nginx.
 
 ```mermaid
 flowchart LR
-  U[browser] -->|vsoko.semao0.ru| T[Traefik]
+  U[browser] -->|vsoko.tech| T[Traefik]
   T --> S((nginx<br>vsoko-frontend))
   U -->|REST + JWT| API[vsoko-api]
 ```
@@ -51,9 +51,6 @@ docker build \
 docker run --rm -p 8001:80 vsoko-frontend
 ```
 
-In production it runs from `docker-compose.yml` behind Traefik from `vsoko-infra`
-and is available at https://vsoko.semao0.ru.
-
 ### Locally
 
 ```bash
@@ -81,3 +78,14 @@ vsoko-frontend/
     ├── types/             # API types
     └── utils/             # constants, helpers
 ```
+
+## CI
+
+The pipeline builds the Docker image from `main` and publishes it to GitLab
+Container Registry with the commit SHA as its tag. The production build uses `VITE_API_BASE_URL=https://api.vsoko.tech/api`
+from `.gitlab-ci.yml`. Set `VITE_DEFAULT_PAGE_SIZE` in CI/CD variables. After a successful build on the protected default branch, the manual `deploy` job
+applies Kubernetes manifests through GitLab Agent and waits for the rollout.
+
+## Kubernetes
+
+Манифесты и порядок запуска: [k8s/README.md](k8s/README.md).

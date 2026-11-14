@@ -63,14 +63,12 @@ async function submit() {
 </script>
 <template>
   <RouterLink class="text-link back-link" to="/workloads"
-    >← К занятиям</RouterLink
+    >К занятиям</RouterLink
   >
   <div class="page-header">
-    <span class="eyebrow">ОЦЕНКА ЗАНЯТИЯ</span>
-    <h1 class="page-title">Ваше мнение имеет значение</h1>
+    <h1 class="page-title">Оценка занятия</h1>
     <p class="page-subtitle">
-      1 — совсем нет, 5 — полностью. Не торопитесь: черновик сохраняется на
-      устройстве.
+      Оцените каждый критерий от 1 до 5. Черновик сохраняется на устройстве.
     </p>
   </div>
   <LoadState :loading="loading" :error="error" @retry="refresh"

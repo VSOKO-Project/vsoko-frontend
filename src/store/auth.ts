@@ -75,7 +75,10 @@ export function installSession(data: LoginResultDto, replace = false) {
     AUTH_STORAGE_KEY,
     JSON.stringify({
       id: replace ? crypto.randomUUID() : state.session!.id,
-      data,
+      data: {
+        ...data,
+        login: data.login || (!replace ? state.session?.data.login : undefined),
+      },
     }),
   );
   syncSession();

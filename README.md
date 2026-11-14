@@ -2,7 +2,7 @@
 
 Vue 3 + TypeScript + Vite. The frontend uses the existing VSOKO API and is deployed to https://vsoko.tech through GitLab CI, Docker, nginx and Kubernetes.
 
-The redesign follows the supplied VSOKO design boards: Literata headings, Golos Text body copy, teal controls, neutral surfaces, numeric ratings and light/dark/system themes. Fonts are served locally; their license is included in `public/fonts/LICENSE.txt`.
+The interface uses Golos Text, compact layouts, teal controls, neutral surfaces, numeric ratings and a light/dark toggle that initially follows the system theme. Dropdown menus use accessible Reka UI components. The header displays the current account from the existing JWT name claim. Fonts are served locally; their license is included in `public/fonts/LICENSE.txt`.
 
 ## Development
 
@@ -15,13 +15,14 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Set `VITE_API_BASE_URL` to the API root, such as `https://api.vsoko.tech/api`. It defaults to `/api`. `VITE_DEFAULT_PAGE_SIZE` defaults to 10. The API URL is embedded at build time.
+Set `VITE_API_BASE_URL` to the API root, such as `https://api.vsoko.tech/api`. It defaults to `/api`. `VITE_DEFAULT_PAGE_SIZE` defaults to 10. The API URL is embedded at build time. Set `VITE_SHOW_PASSWORD_RESET_NOTICE=false` to hide the reset notice above the login card; it defaults to true and is passed through Docker and GitLab CI builds.
 
 ## Functionality
 
 - Login, refresh rotation, cross-tab session locking, logout and forced password change. Existing `vsoko.auth.v1` sessions are retained.
 - Student workloads, criteria-based feedback, device-local drafts isolated by account and workload, feedback history, editing and deletion during open periods.
-- Administrator overview with period filters, teacher/discipline results, feedback, editable catalogs, record merging, criteria, AI summaries, PDF reports and period management.
+- Admin feedback starts with choosing a discipline or teacher. Date and average-grade sorting is applied by the API before pagination; creation timestamps are displayed when available.
+- Administrator overview with period-filtered statistics, semester feedback charts, grade distribution and low-grade disciplines; teacher/discipline results, feedback, editable catalogs, live search when merging records, criteria, AI summaries, PDF reports and period management.
 - Excel import preview/apply, validation issues, proposed deletions, semester export, teacher selection and credential downloads.
 - Responsive navigation, system/light/dark themes, keyboard rating controls, native modal focus management, loading/error/empty states and 404.
 
@@ -47,4 +48,6 @@ docker build --build-arg VITE_API_BASE_URL=https://api.vsoko.tech/api -t vsoko-f
 docker run --rm -p 8001:80 vsoko-frontend
 ```
 
-Deploy the tested default-branch pipeline with its existing manual `deploy` job. Roll back by deploying the preceding known-good image SHA through the same Kubernetes manifests. No API or infrastructure changes are required by this frontend release.
+Deploy the tested default-branch pipeline with its existing manual `deploy` job. Roll back by deploying the preceding known-good image SHA through the same Kubernetes manifests. The updated feedback browser requires the accompanying API sorting changes to be deployed first. No infrastructure or database schema changes are required.
+
+Confirmations use the shared app dialog. Background refreshes retain existing data and discard stale responses; changing accounts clears private data. The saved color theme is applied in the HTML head before the app starts.

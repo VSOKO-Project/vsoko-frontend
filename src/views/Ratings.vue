@@ -42,7 +42,6 @@ async function show(id: string) {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">РЕЗУЛЬТАТЫ ОЦЕНКИ</span>
     <h1 class="page-title">
       {{ teacher ? "Оценки преподавателей" : "Оценки дисциплин" }}
     </h1>
@@ -99,7 +98,7 @@ async function show(id: string) {
                 :disabled="action.pending.value"
                 @click="show(item.id)"
               >
-                Открыть ↗
+                Открыть
               </button>
             </td>
           </tr>

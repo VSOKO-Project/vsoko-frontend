@@ -56,3 +56,39 @@ it("prevents paging beyond the first and last page", async () => {
   await wrapper.setProps({ page: 3 });
   expect(wrapper.findAll("button")[1]!.attributes("disabled")).toBeDefined();
 });
+it("renders an accessible custom menu with the selected option", async () => {
+  const { default: AppSelect } =
+    await import("../src/components/AppSelect.vue");
+  const { flushPromises } = await import("@vue/test-utils");
+  const wrapper = mount(AppSelect, {
+    props: {
+      modelValue: "fall",
+      label: "Период",
+      options: [
+        { value: "", label: "Все периоды" },
+        { value: "fall", label: "Осень 2026" },
+      ],
+    },
+  });
+  await flushPromises();
+  expect(wrapper.get("[role=combobox]").attributes("aria-label")).toBe(
+    "Период",
+  );
+  expect(wrapper.get("[role=combobox]").text()).toContain("Осень 2026");
+  expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+  wrapper.unmount();
+});
+it("keeps a custom menu disabled during a pending action", async () => {
+  const { default: AppSelect } =
+    await import("../src/components/AppSelect.vue");
+  const wrapper = mount(AppSelect, {
+    props: {
+      modelValue: "",
+      label: "Тип критерия",
+      disabled: true,
+      options: [{ value: "", label: "Выберите тип" }],
+    },
+  });
+  expect(wrapper.get("[role=combobox]").attributes("disabled")).toBeDefined();
+  wrapper.unmount();
+});

@@ -14,6 +14,8 @@ import {
 import { useResource, useAction } from "../composables/resource";
 import { saveBlob } from "../utils/download";
 import type { ImportReportDto, Term } from "../types";
+import { confirmAction } from "../composables/confirmation";
+import AppSelect from "../components/AppSelect.vue";
 import LoadState from "../components/LoadState.vue";
 const periodKey = ref("");
 const file = ref<File>();
@@ -107,9 +109,12 @@ async function apply() {
   const chosenFile = file.value;
   const chosenPeriod = { ...params.value };
   if (
-    !confirm(
-      `Импортировать данные за «${report.value.period.title}»?${report.value.workloadsToDelete.length ? ` Будет удалено нагрузок: ${report.value.workloadsToDelete.length}.` : ""}`,
-    )
+    !(await confirmAction({
+      title: "Импортировать данные?",
+      description: `Семестр: ${report.value.period.title}.${report.value.workloadsToDelete.length ? ` Будет удалено нагрузок: ${report.value.workloadsToDelete.length}.` : ""}`,
+      confirmText: "Импортировать",
+      danger: report.value.workloadsToDelete.length > 0,
+    }))
   )
     return;
   const ok = await action.run(async () => {
@@ -154,7 +159,6 @@ async function download(
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">ДАННЫЕ УНИВЕРСИТЕТА</span>
     <h1 class="page-title">Импорт</h1>
     <p class="page-subtitle">
       Загрузка студентов и нагрузки из Excel с проверкой перед сохранением.
@@ -180,19 +184,18 @@ async function download(
         :error="periods.error.value"
         @retry="periods.refresh"
         ><label class="field"
-          >Семестр<select v-model="periodKey">
-            <option value="" disabled>Выберите семестр</option>
-            <option
-              v-for="p in periods.data.value"
-              :key="`${p.startYear}:${p.term}`"
-              :value="`${p.startYear}:${p.term}`"
-            >
-              {{ p.title }}{{ p.isCurrent ? " — текущий" : ""
-              }}{{ !p.exists ? " (будет создан)" : "" }}
-            </option>
-          </select></label
-        ></LoadState
-      >
+          >Семестр<AppSelect
+            v-model="periodKey"
+            label="Семестр"
+            :disabled="action.pending.value"
+            :options="[
+              { value: '', label: 'Выберите семестр', disabled: true },
+              ...(periods.data.value || []).map((p) => ({
+                value: `${p.startYear}:${p.term}`,
+                label: `${p.title}${p.isCurrent ? ' · текущий' : ''}${!p.exists ? ' (будет создан)' : ''}`,
+              })),
+            ]" /></label
+      ></LoadState>
       <details v-if="selected?.exists && teachers.data.value?.length">
         <summary>
           Выбрать преподавателей для выгрузки ({{ teacherIds.length || "все" }})
@@ -231,7 +234,7 @@ async function download(
           :disabled="downloads.pending.value"
           @click="download('template')"
         >
-          Пустой шаблон ↓
+          Пустой шаблон
         </button>
       </div>
     </section>
@@ -247,7 +250,6 @@ async function download(
         @dragover.prevent="dragging = true"
         @dragleave="dragging = false"
         @drop.prevent="drop"
-        ><span class="intro-symbol">↑</span
         ><span>Перетащите файл .xlsx сюда или выберите на устройстве</span
         ><input
           type="file"
@@ -393,7 +395,6 @@ async function download(
             ? `Скачать (${groupIds.length})`
             : "Скачать для всех групп"
         }}
-        ↓
       </button></LoadState
     >
   </section>

@@ -34,7 +34,6 @@ function search(event: Event) {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">ВАША ОБРАТНАЯ СВЯЗЬ</span>
     <h1 class="page-title">Оценить занятия</h1>
     <p class="page-subtitle">
       {{ open?.title || "Дисциплины и преподаватели вашей группы" }} · Ваш опыт
@@ -49,7 +48,7 @@ function search(event: Event) {
       :value="query"
       @input="search"
     /><RouterLink class="text-link" to="/my-feedback"
-      >История оценок ↗</RouterLink
+      >История оценок</RouterLink
     >
   </div>
   <LoadState
@@ -75,8 +74,8 @@ function search(event: Event) {
           <span class="badge">{{ w.group.name }}</span><RouterLink
             class="btn btn--primary"
             :to="`/feedback/new?workloadId=${encodeURIComponent(w.id)}`"
-            >Оценить занятие <span aria-hidden="true">→</span></RouterLink
-          >
+            >Оценить занятие
+          </RouterLink>
         </article>
       </div>
       <div v-if="!data?.items.length" class="empty-state">

@@ -25,7 +25,6 @@ async function generate() {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">РЕЗУЛЬТАТЫ ДЛЯ ОБСУЖДЕНИЯ</span>
     <h1 class="page-title">Отчёты и данные</h1>
     <p class="page-subtitle">
       Оценки качества образования за выбранный период в одном документе.
@@ -45,7 +44,7 @@ async function generate() {
         :disabled="action.pending.value"
         @click="generate"
       >
-        {{ action.pending.value ? "Формируем отчёт…" : "Сформировать отчёт" }} ↓
+        {{ action.pending.value ? "Формируем отчёт…" : "Сформировать отчёт" }}
       </button>
       <p v-if="action.error.value" role="alert" class="error-text">
         {{ action.error.value }}
@@ -57,16 +56,5 @@ async function generate() {
         >Скачать повторно</a
       >
     </section>
-    <aside class="report-aside">
-      <span class="intro-symbol">▧</span>
-      <h2>Данные — начало диалога</h2>
-      <p class="muted">
-        Используйте отчёты для обсуждения результатов и планирования изменений.
-        Учитывайте контекст занятий и комментарии студентов.
-      </p>
-      <RouterLink to="/dashboard" class="text-link"
-        >К обзору результатов ↗</RouterLink
-      >
-    </aside>
   </div>
 </template>

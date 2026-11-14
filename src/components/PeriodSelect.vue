@@ -3,22 +3,27 @@ import { computed } from "vue";
 import { getPeriods } from "../api/periods";
 import { useResource } from "../composables/resource";
 import { periodValue } from "../store/period";
+import AppSelect from "./AppSelect.vue";
 const { data, error, refresh } = useResource((signal) => getPeriods(signal));
-const years = computed(() => [...new Set(data.value?.map((p) => p.startYear))]);
+const options = computed(() => [
+  { value: "", label: "Все периоды" },
+  ...(data.value || []).map((p) => ({
+    value: `p:${p.id}`,
+    label: `${p.title}${p.isFeedbackOpen ? " · сбор открыт" : ""}`,
+  })),
+  ...[...new Set(data.value?.map((p) => p.startYear))].map((y) => ({
+    value: `y:${y}`,
+    label: `${y}/${y + 1} учебный год`,
+  })),
+]);
 </script>
 <template>
   <div>
-    <select v-model="periodValue" aria-label="Период">
-      <option value="">Все периоды</option>
-      <option v-for="p in data" :key="p.id" :value="`p:${p.id}`">
-        {{ p.title }}{{ p.isFeedbackOpen ? " (сбор открыт)" : "" }}
-      </option>
-      <optgroup v-if="years.length" label="Учебный год целиком">
-        <option v-for="y in years" :key="y" :value="`y:${y}`">
-          {{ y }}/{{ y + 1 }} учебный год
-        </option>
-      </optgroup></select
-    ><button v-if="error" class="text-link" @click="refresh">
+    <AppSelect v-model="periodValue" label="Период" :options="options" /><button
+      v-if="error"
+      class="text-link"
+      @click="refresh"
+    >
       Повторить загрузку периодов
     </button>
   </div>

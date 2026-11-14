@@ -5,6 +5,7 @@ import { getDisciplines } from "../api/disciplines";
 import { getTeacherSummary, getDisciplineSummary } from "../api/summaries";
 import { useResource, useAction } from "../composables/resource";
 import { periodParams, periodValue } from "../store/period";
+import AppSelect from "../components/AppSelect.vue";
 import PeriodSelect from "../components/PeriodSelect.vue";
 import LoadState from "../components/LoadState.vue";
 const mode = ref("teacher");
@@ -39,7 +40,6 @@ async function generate() {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">ОТ КОММЕНТАРИЕВ К ВЫВОДАМ</span>
     <h1 class="page-title">Сводки ИИ</h1>
     <p class="page-subtitle">
       Повторяющиеся темы в обратной связи — отправная точка для обсуждения.
@@ -48,22 +48,26 @@ async function generate() {
   <section class="card">
     <div class="filter-grid">
       <label class="field"
-        >Тип<select v-model="mode">
-          <option value="teacher">По преподавателю</option>
-          <option value="discipline">По дисциплине</option>
-        </select></label
+        >Тип<AppSelect
+          v-model="mode"
+          label="Тип сводки"
+          :options="[
+            { value: 'teacher', label: 'По преподавателю' },
+            { value: 'discipline', label: 'По дисциплине' },
+          ]" /></label
       ><label class="field"
         >{{ mode === "teacher" ? "Преподаватель" : "Дисциплина"
-        }}<select
+        }}<AppSelect
           v-model="selected"
-          :aria-label="mode === 'teacher' ? 'Преподаватель' : 'Дисциплина'"
-        >
-          <option value="">Выберите запись</option>
-          <option v-for="o in options.data.value" :key="o.id" :value="o.id">
-            {{ o.name }}
-          </option>
-        </select></label
-      >
+          :label="mode === 'teacher' ? 'Преподаватель' : 'Дисциплина'"
+          :options="[
+            { value: '', label: 'Выберите запись' },
+            ...(options.data.value || []).map((o) => ({
+              value: o.id,
+              label: o.name,
+            })),
+          ]"
+      /></label>
       <div class="field">Период<PeriodSelect /></div>
       <button
         class="btn btn--primary"
@@ -79,14 +83,14 @@ async function generate() {
     :error="options.error.value || action.error.value"
     @retry="selected ? generate() : options.refresh()"
     ><section v-if="summary" class="card summary-card">
-      <span class="eyebrow">✧ СВОДКА ИИ</span>
+      <span class="eyebrow">СВОДКА ИИ</span>
       <p class="summary-text">{{ summary }}</p>
       <p class="ai-note">
         Сводка может содержать неточности. Проверьте выводы по исходным
         комментариям. Решение остаётся за человеком.
       </p>
       <RouterLink class="text-link" to="/feedback"
-        >Показать комментарии ↗</RouterLink
+        >Показать комментарии</RouterLink
       >
     </section>
     <div v-else class="empty-state">

@@ -11,3 +11,4 @@ import "./pages/admin/AdminPages.css";
 import "./design-system.css";
 import "./vue.css";
 createApp(App).use(router).mount("#root");
+import "./ui-refinement.css";

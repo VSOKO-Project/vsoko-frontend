@@ -5,6 +5,7 @@ export interface LoginQuery {
 }
 
 export interface LoginResultDto {
+  login?: string;
   accessToken: string;
   refreshToken: string;
   expires: string;
@@ -183,7 +184,11 @@ export interface CriteriaFeedbackDto {
   criteriaScore: number;
 }
 
+export type FeedbackSort = "Newest" | "Oldest" | "GradeDesc" | "GradeAsc";
+
 export interface FeedbackDto {
+  createdAtUtc?: string | null;
+  averageGrade?: number | null;
   id: string;
   comment: string;
   workload: WorkloadDto;

@@ -1,39 +1,58 @@
 import { ref, shallowRef, watch, onScopeDispose, type WatchSource } from "vue";
 import { auth } from "../store/auth";
 import { getApiErrorMessage } from "../api/errors";
+export const backgroundLoads = ref(0);
+export const refreshNotice = ref("");
 export function useResource<T>(
   load: (signal: AbortSignal) => Promise<T>,
   sources: WatchSource[] = [],
 ) {
   const data = shallowRef<T>();
   const loading = ref(false);
+  const refreshing = ref(false);
   const error = ref("");
   let controller: AbortController | undefined;
-  async function refresh() {
+  async function refresh(reset = false) {
     controller?.abort();
     const current = new AbortController();
     controller = current;
-    loading.value = true;
+    if (reset) data.value = undefined;
+    const background = data.value !== undefined;
+    loading.value = !background;
+    refreshing.value = background;
     error.value = "";
-    data.value = undefined;
+    if (background) backgroundLoads.value++;
     try {
       const result = await load(current.signal);
       if (!current.signal.aborted) data.value = result;
     } catch (cause) {
-      if (!current.signal.aborted)
-        error.value = getApiErrorMessage(
-          cause,
-          "Не удалось загрузить данные. Попробуйте ещё раз.",
-        );
+      if (!current.signal.aborted) {
+        if (background)
+          refreshNotice.value =
+            "Не удалось обновить данные. Показана последняя загруженная версия.";
+        else
+          error.value = getApiErrorMessage(
+            cause,
+            "Не удалось загрузить данные. Попробуйте ещё раз.",
+          );
+      }
     } finally {
-      if (!current.signal.aborted) loading.value = false;
+      if (background)
+        backgroundLoads.value = Math.max(0, backgroundLoads.value - 1);
+      if (!current.signal.aborted) {
+        loading.value = false;
+        refreshing.value = false;
+      }
     }
   }
-  watch([() => auth.version, ...sources], () => void refresh(), {
-    immediate: true,
-  });
+  watch(
+    [() => auth.version, ...sources],
+    (value, previous) =>
+      void refresh(!!previous?.length && value[0] !== previous[0]),
+    { immediate: true },
+  );
   onScopeDispose(() => controller?.abort());
-  return { data, loading, error, refresh };
+  return { data, loading, refreshing, error, refresh: () => refresh() };
 }
 export function useAction() {
   const pending = ref(false);

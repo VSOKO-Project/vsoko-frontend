@@ -77,7 +77,14 @@ export const test = base.extend<{
               "vsoko.auth.v1",
               JSON.stringify({ id: "e2e", data }),
             ),
-          { data: { ...session, isAdmin: admin, mustChangePassword } },
+          {
+            data: {
+              ...session,
+              login: admin ? "admin" : "student",
+              isAdmin: admin,
+              mustChangePassword,
+            },
+          },
         );
       },
     });

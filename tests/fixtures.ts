@@ -1,4 +1,5 @@
 export const session = {
+  login: "student",
   accessToken: "access",
   refreshToken: "refresh",
   userId: "student",

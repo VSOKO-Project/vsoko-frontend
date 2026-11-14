@@ -2,6 +2,7 @@
 import { getPeriods, setPeriodFeedback } from "../api/periods";
 import { useResource, useAction } from "../composables/resource";
 import type { PeriodDto } from "../types";
+import { confirmAction } from "../composables/confirmation";
 import LoadState from "../components/LoadState.vue";
 const { data, loading, error, refresh } = useResource((signal) =>
   getPeriods(signal),
@@ -13,10 +14,17 @@ async function toggle(period: PeriodDto, event: Event) {
     (p) => p.isFeedbackOpen && p.id !== period.id,
   );
   const message = period.isFeedbackOpen
-    ? `Закрыть сбор отзывов за «${period.title}»? Студенты не смогут оставлять и изменять отзывы.`
-    : `Открыть сбор отзывов за «${period.title}»?${opened ? ` Сбор за «${opened.title}» будет закрыт.` : ""}`;
+    ? `Студенты не смогут оставлять и изменять отзывы за «${period.title}».`
+    : `Сбор отзывов за «${period.title}» будет открыт.${opened ? ` Сбор за «${opened.title}» будет закрыт.` : ""}`;
   if (
-    confirm(message) &&
+    (await confirmAction({
+      title: period.isFeedbackOpen
+        ? "Закрыть сбор отзывов?"
+        : "Открыть сбор отзывов?",
+      description: message,
+      confirmText: period.isFeedbackOpen ? "Закрыть сбор" : "Открыть сбор",
+      danger: period.isFeedbackOpen,
+    })) &&
     (await action.run(
       () => setPeriodFeedback(period.id, !period.isFeedbackOpen),
       "Состояние периода обновлено",
@@ -27,7 +35,6 @@ async function toggle(period: PeriodDto, event: Event) {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">УПРАВЛЕНИЕ СБОРОМ ОЦЕНОК</span>
     <h1 class="page-title">Учебные периоды</h1>
     <p class="page-subtitle">
       Сбор отзывов открыт только у одного семестра. Новые периоды создаются при

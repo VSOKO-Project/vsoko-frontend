@@ -22,7 +22,7 @@ export async function login(data: LoginQuery) {
       data,
     );
     assertCurrentSession(version);
-    installSession(response.data.data, true);
+    installSession({ ...response.data.data, login: data.login }, true);
   });
 }
 export async function logout() {

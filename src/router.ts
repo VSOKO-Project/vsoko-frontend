@@ -3,6 +3,7 @@ import { auth, homePath, syncSession } from "./store/auth";
 import Login from "./views/Login.vue";
 import Workloads from "./views/Workloads.vue";
 import Feedback from "./views/Feedback.vue";
+import FeedbackBrowser from "./views/FeedbackBrowser.vue";
 import History from "./views/History.vue";
 import Dashboard from "./views/Dashboard.vue";
 import Catalog from "./views/Catalog.vue";
@@ -27,8 +28,7 @@ export const router = createRouter({
     { path: "/my-feedback", component: History },
     {
       path: "/feedback",
-      component: History,
-      props: { admin: true },
+      component: FeedbackBrowser,
       meta: { admin: true },
     },
     { path: "/dashboard", component: Dashboard, meta: { admin: true } },

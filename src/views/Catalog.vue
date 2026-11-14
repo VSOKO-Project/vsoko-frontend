@@ -15,6 +15,8 @@ import {
 } from "../api/criteria";
 import { useResource, useAction } from "../composables/resource";
 import type { CriteriaObject } from "../types";
+import { confirmAction } from "../composables/confirmation";
+import AppSelect from "../components/AppSelect.vue";
 import LoadState from "../components/LoadState.vue";
 import Pagination from "../components/Pagination.vue";
 import Modal from "../components/Modal.vue";
@@ -91,34 +93,49 @@ async function save() {
 }
 async function remove(row: Row) {
   if (
-    confirm(`Удалить критерий «${row.name}»?`) &&
+    (await confirmAction({
+      title: "Удалить критерий?",
+      description: `Критерий «${row.name}» будет удалён.`,
+      confirmText: "Удалить",
+      danger: true,
+    })) &&
     (await action.run(() => deleteCriteria(row.id), "Критерий удалён"))
   )
     await refresh();
 }
-const mergeOptions = ref<Row[]>([]);
 const mergeQuery = ref("");
-async function startMerge(row: Row) {
+const mergeSearch = ref("");
+watch(mergeQuery, (value, _old, cleanup) => {
+  const timer = setTimeout(() => {
+    mergeSearch.value = value.trim();
+  }, 200);
+  cleanup(() => clearTimeout(timer));
+});
+const mergeResults = useResource(async () => {
+  if (!mergeOpen.value) return [] as Row[];
+  const result = await (
+    props.kind === "teachers" ? getTeachers : getDisciplines
+  )({ Page: 1, PageSize: 100, Query: mergeSearch.value });
+  return (result.items as Row[]).filter((row) => row.id !== form.id);
+}, [mergeOpen, mergeSearch]);
+function startMerge(row: Row) {
   edit(row);
   open.value = false;
   mergeOpen.value = true;
   target.value = "";
-  await searchMerge();
-}
-async function searchMerge() {
-  await action.run(async () => {
-    const result = await (
-      props.kind === "teachers" ? getTeachers : getDisciplines
-    )({ Page: 1, PageSize: 100, Query: mergeQuery.value });
-    mergeOptions.value = result.items.filter((row) => row.id !== form.id);
-  });
+  mergeQuery.value = "";
+  mergeSearch.value = "";
 }
 async function merge() {
   if (
     !target.value ||
-    !confirm(
-      "Объединить записи? Нагрузка и отзывы перейдут к выбранной записи.",
-    )
+    !(await confirmAction({
+      title: "Объединить записи?",
+      description:
+        "Нагрузка и отзывы исходной записи перейдут к выбранной записи. Исходная запись будет удалена.",
+      confirmText: "Объединить",
+      danger: true,
+    }))
   )
     return;
   if (
@@ -138,7 +155,6 @@ async function merge() {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">УПРАВЛЕНИЕ ДАННЫМИ</span>
     <h1 class="page-title">{{ title }}</h1>
     <p class="page-subtitle">
       {{
@@ -229,11 +245,14 @@ async function merge() {
       ><label v-if="kind === 'teachers'" class="field"
         >Отчество<input v-model="form.patronymic" /></label
       ><label v-if="kind === 'criteria'" class="field"
-        >Тип критерия<select v-model="form.object">
-          <option value="Teacher">Преподаватель</option>
-          <option value="Discipline">Дисциплина</option>
-        </select></label
-      >
+        >Тип критерия<AppSelect
+          v-model="form.object"
+          label="Тип критерия"
+          :options="[
+            { value: 'Teacher', label: 'Преподаватель' },
+            { value: 'Discipline', label: 'Дисциплина' },
+          ]"
+      /></label>
       <p v-if="action.error.value" role="alert" class="error-text">
         {{ action.error.value }}
       </p>
@@ -248,22 +267,38 @@ async function merge() {
     ><p class="muted">
       Нагрузка и отзывы исходной записи перейдут к выбранной записи.
     </p>
-    <form class="toolbar" @submit.prevent="searchMerge">
-      <input
+    <label class="field merge-search"
+      >Объединить с записью<input
         v-model="mergeQuery"
+        type="search"
         aria-label="Поиск записи для объединения"
-        placeholder="Поиск…"
-      /><button class="btn btn--secondary" :disabled="action.pending.value">
-        Найти
-      </button>
-    </form>
-    <label class="field"
-      >Оставить запись<select v-model="target">
-        <option value="">Выберите запись</option>
-        <option v-for="row in mergeOptions" :key="row.id" :value="row.id">
-          {{ row.fullName || row.name }}
-        </option>
-      </select></label
+        placeholder="Начните вводить название"
+    /></label>
+    <LoadState
+      :loading="mergeResults.loading.value"
+      :error="mergeResults.error.value"
+      @retry="mergeResults.refresh"
+      ><div
+        class="merge-results"
+        role="radiogroup"
+        aria-label="Оставить запись"
+      >
+        <label
+          v-for="row in mergeResults.data.value"
+          :key="row.id"
+          class="merge-result"
+          :class="{ 'merge-result--selected': target === row.id }"
+          ><input
+            v-model="target"
+            type="radio"
+            name="merge-target"
+            :value="row.id"
+          /><span>{{ row.fullName || row.name }}</span></label
+        >
+        <p v-if="!mergeResults.data.value?.length" class="muted">
+          Подходящих записей нет.
+        </p>
+      </div></LoadState
     >
     <p v-if="action.error.value" role="alert" class="error-text">
       {{ action.error.value }}

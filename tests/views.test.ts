@@ -5,8 +5,17 @@ import App from "../src/App.vue";
 import { router } from "../src/router";
 import { installSession, clearSession } from "../src/store/auth";
 import { responseData, session } from "./fixtures";
+// Route tests isolate page behavior; the actual popup, keyboard and modal portal are covered by Playwright.
+vi.mock("../src/components/AppSelect.vue", () => ({
+  default: {
+    props: ["modelValue", "options", "label", "disabled"],
+    emits: ["update:modelValue"],
+    template: `<select :value="modelValue" :aria-label="label" :disabled="disabled" @change="$emit('update:modelValue', $event.target.value)"><option v-for="option in options" :key="option.value" :value="option.value" :disabled="option.disabled">{{option.label}}</option></select>`,
+  },
+}));
 let wrapper: VueWrapper | undefined;
 beforeEach(() => {
+  vi.stubEnv("VITE_SHOW_PASSWORD_RESET_NOTICE", "true");
   if (!HTMLDialogElement.prototype.showModal)
     Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
       configurable: true,
@@ -57,6 +66,7 @@ afterEach(() => {
   wrapper?.unmount();
   wrapper = undefined;
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 async function open(path: string, admin = true) {
   installSession({ ...session, isAdmin: admin }, true);
@@ -69,9 +79,9 @@ async function open(path: string, admin = true) {
 it.each([
   ["/dashboard", "Обзор результатов"],
   ["/workloads", "Оценить занятия"],
-  ["/feedback/new?workloadId=w1", "Ваше мнение имеет значение"],
+  ["/feedback/new?workloadId=w1", "Оценка занятия"],
   ["/my-feedback", "Мои оценки"],
-  ["/feedback", "Все отзывы"],
+  ["/feedback", "Отзывы"],
   ["/teachers", "Преподаватели"],
   ["/disciplines", "Дисциплины"],
   ["/criteria", "Критерии оценки"],
@@ -144,7 +154,7 @@ it("shows a recoverable error instead of zero analytics", async () => {
 });
 it("persists theme selection", async () => {
   const view = await open("/workloads", false);
-  await view.get('select[aria-label="Тема оформления"]').setValue("dark");
+  await view.get('button[aria-label="Включить тёмную тему"]').trigger("click");
   expect(document.documentElement.dataset.theme).toBe("dark");
   expect(localStorage.getItem("vsoko.theme")).toBe("dark");
 });
@@ -213,23 +223,21 @@ it("renames a teacher without losing the full name parts", async () => {
   });
 });
 it("requires confirmation before closing a period", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(false);
+  const native = vi.spyOn(window, "confirm");
   const view = await open("/periods");
   await view.get("input[type=checkbox]").trigger("change");
   await flushPromises();
-  expect(
-    (view.get("input[type=checkbox]").element as HTMLInputElement).checked,
-  ).toBe(true);
+  expect(view.text()).toContain("Закрыть сбор отзывов?");
   expect(vi.mocked(fetch).mock.calls.some(([, o]) => o?.method === "PUT")).toBe(
     false,
   );
-  vi.mocked(window.confirm).mockReturnValue(true);
+  await confirmDialog(view, "Отмена");
   await view.get("input[type=checkbox]").trigger("change");
   await flushPromises();
-  const call = vi
-    .mocked(fetch)
-    .mock.calls.find(([, options]) => options?.method === "PUT");
+  await confirmDialog(view, "Закрыть сбор");
+  const call = vi.mocked(fetch).mock.calls.find(([, o]) => o?.method === "PUT");
   expect(JSON.parse(String(call?.[1]?.body))).toEqual({ isOpen: false });
+  expect(native).not.toHaveBeenCalled();
 });
 it("generates a summary only after selection", async () => {
   const view = await open("/summaries");
@@ -255,7 +263,7 @@ it("downloads the report for the selected semester", async () => {
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   const view = await open("/reports");
   await view.get("select[aria-label=Период]").setValue("p:p1");
-  await button(view, "Сформировать отчёт ↓").trigger("click");
+  await button(view, "Сформировать отчёт").trigger("click");
   await flushPromises();
   const call = vi
     .mocked(fetch)
@@ -282,7 +290,6 @@ it("blocks invalid import files before any preview request", async () => {
   ).toBe(false);
 });
 it("previews and confirms an import before writing", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const view = await open("/import");
   const input = view.get("input[type=file]");
   Object.defineProperty(input.element, "files", {
@@ -298,6 +305,7 @@ it("previews and confirms an import before writing", async () => {
       .mock.calls.some(([url]) => String(url).includes("/Import/apply")),
   ).toBe(false);
   await button(view, "Импортировать").trigger("click");
+  await confirmDialog(view, "Импортировать");
   await flushPromises();
   expect(view.text()).toContain("Импорт выполнен");
   const call = vi
@@ -328,9 +336,9 @@ it("edits an existing feedback and sends the current criteria", async () => {
   expect(view.text()).toContain("Оценка обновлена");
 });
 it("deletes an own feedback only after confirmation", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const view = await open("/my-feedback", false);
   await button(view, "Удалить").trigger("click");
+  await confirmDialog(view, "Удалить");
   await flushPromises();
   expect(
     vi
@@ -343,7 +351,6 @@ it("deletes an own feedback only after confirmation", async () => {
   expect(view.text()).toContain("Отзыв удалён");
 });
 it("updates and deletes a criterion", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const view = await open("/criteria");
   await view
     .findAll("button")
@@ -365,6 +372,7 @@ it("updates and deletes a criterion", async () => {
     .findAll("button")
     .find((b) => b.text() === "Удалить")!
     .trigger("click");
+  await confirmDialog(view, "Удалить");
   await flushPromises();
   expect(
     vi
@@ -377,12 +385,11 @@ it("updates and deletes a criterion", async () => {
 });
 it("loads rating summaries from the selected result", async () => {
   const view = await open("/teachers/rating");
-  await button(view, "Открыть ↗").trigger("click");
+  await button(view, "Открыть").trigger("click");
   await flushPromises();
   expect(view.get(".summary-text").text()).toContain("понятные объяснения");
 });
 it("renames a discipline and merges a duplicate into another record", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const view = await open("/disciplines");
   await button(view, "Изменить").trigger("click");
   await flushPromises();
@@ -399,8 +406,9 @@ it("renames a discipline and merges a duplicate into another record", async () =
   ).toBe(true);
   await button(view, "Объединить").trigger("click");
   await flushPromises();
-  const dialogs = view.findAll("dialog");
-  const merge = dialogs[1]!;
+  const merge = view
+    .findAll("dialog")
+    .find((dialog) => dialog.get("h2").text() === "Объединение записей")!;
   const search = merge.get("input");
   await search.setValue("Алгебра");
   vi.mocked(fetch).mockImplementation(
@@ -415,28 +423,16 @@ it("renames a discipline and merges a duplicate into another record", async () =
         }),
       ),
   );
-  await merge.get("form").trigger("submit");
-  await flushPromises();
+  await search.setValue("Другая дисциплина");
   await vi.waitFor(() =>
-    expect(
-      merge
-        .findAll("option")
-        .some((option) => option.attributes("value") === "d2"),
-    ).toBe(true),
+    expect(merge.find('input[value="d2"]').exists()).toBe(true),
   );
-  await merge.get("select").setValue("d2");
-  await vi.waitFor(() =>
-    expect(
-      merge
-        .findAll("button")
-        .find((b) => b.text() === "Объединить")!
-        .attributes("disabled"),
-    ).toBeUndefined(),
-  );
+  await merge.get('input[value="d2"]').setValue();
   await merge
     .findAll("button")
     .find((b) => b.text() === "Объединить")!
     .trigger("click");
+  await confirmDialog(view, "Объединить");
   await flushPromises();
   await vi.waitFor(() =>
     expect(
@@ -470,9 +466,9 @@ it("exports a semester and selected credentials", async () => {
         String(url).includes("/Import/export?startYear=2026&term=Autumn"),
       ),
   ).toBe(true);
-  await button(view, "Пустой шаблон ↓").trigger("click");
+  await button(view, "Пустой шаблон").trigger("click");
   await flushPromises();
-  await button(view, "Скачать для всех групп ↓").trigger("click");
+  await button(view, "Скачать для всех групп").trigger("click");
   await flushPromises();
   expect(
     vi
@@ -508,4 +504,93 @@ it("handles login errors without navigating", async () => {
   await flushPromises();
   expect(wrapper.get("[role=alert]").text()).toContain("Неверный пароль");
   expect(router.currentRoute.value.path).toBe("/login");
+});
+it("shows the signed-in account and removes footer slogans", async () => {
+  const view = await open("/dashboard");
+  expect(view.get(".account-login").text()).toBe("student");
+  expect(view.text()).not.toContain("Данные помогают обсуждать и улучшать");
+  expect(view.text()).not.toContain("Обратная связь,которая помогает учиться");
+  expect(view.find("footer").exists()).toBe(false);
+});
+it("shows charts and period-specific counts on the dashboard", async () => {
+  const view = await open("/dashboard");
+  expect(view.findAll("svg[role=img]")).toHaveLength(2);
+  expect(view.text()).toContain("Отзывы по семестрам");
+  expect(view.text()).toContain("Распределение оценок");
+  await view.get("select[aria-label=Период]").setValue("p:p1");
+  await flushPromises();
+  expect(view.findAll(".stat-card")[0]!.text()).toContain("1");
+});
+
+async function confirmDialog(view: VueWrapper, label: string) {
+  await flushPromises();
+  const actions = view.get(".confirmation-actions");
+  await actions
+    .findAll("button")
+    .find((button) => button.text() === label)!
+    .trigger("click");
+  await flushPromises();
+}
+it("does not fetch admin feedback until a target is chosen", async () => {
+  const view = await open("/feedback");
+  expect(
+    vi
+      .mocked(fetch)
+      .mock.calls.some(
+        ([url]) => new URL(String(url)).pathname === "/api/Feedback",
+      ),
+  ).toBe(false);
+  await view.get(".feedback-target").trigger("click");
+  await flushPromises();
+  const call = vi
+    .mocked(fetch)
+    .mock.calls.find(
+      ([url]) => new URL(String(url)).pathname === "/api/Feedback",
+    );
+  expect(new URL(String(call?.[0])).searchParams.get("DisciplineId")).toBe(
+    "d1",
+  );
+  expect(new URL(String(call?.[0])).searchParams.get("Sort")).toBe("Newest");
+  await view
+    .get('select[aria-label="Сортировка отзывов"]')
+    .setValue("GradeAsc");
+  await flushPromises();
+  expect(
+    vi
+      .mocked(fetch)
+      .mock.calls.some(
+        ([url]) => new URL(String(url)).searchParams.get("Sort") === "GradeAsc",
+      ),
+  ).toBe(true);
+});
+it("hides the password reset notice when the feature is disabled", async () => {
+  vi.stubEnv("VITE_SHOW_PASSWORD_RESET_NOTICE", "false");
+  await router.push("/login");
+  wrapper = mount(App, { global: { plugins: [router] } });
+  await flushPromises();
+  expect(wrapper.find(".login-notice").exists()).toBe(false);
+});
+it("places the reset notice before the login card", async () => {
+  await router.push("/login");
+  wrapper = mount(App, { global: { plugins: [router] } });
+  await flushPromises();
+  expect(wrapper.get(".login-stack").element.firstElementChild?.className).toBe(
+    "login-notice",
+  );
+});
+it("selects a teacher before loading their reviews", async () => {
+  const view = await open("/feedback");
+  await button(view, "По преподавателю").trigger("click");
+  await flushPromises();
+  expect(view.text()).toContain("Петрова Анна Ивановна");
+  await view.get(".feedback-target").trigger("click");
+  await flushPromises();
+  const call = vi
+    .mocked(fetch)
+    .mock.calls.find(
+      ([url]) => new URL(String(url)).pathname === "/api/Feedback",
+    );
+  const params = new URL(String(call?.[0])).searchParams;
+  expect(params.get("TeacherId")).toBe("t1");
+  expect(params.has("DisciplineId")).toBe(false);
 });

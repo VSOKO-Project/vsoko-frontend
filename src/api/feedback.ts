@@ -2,12 +2,14 @@ import api from "./client";
 import type {
   ApiSuccessResult,
   FeedbackDto,
+  FeedbackSort,
   PagedResultDto,
   PostFeedbackRequest,
   PutFeedbackRequest,
 } from "../types";
 
 interface FeedbackParams {
+  Sort?: FeedbackSort;
   Page?: number;
   PageSize?: number;
   DisciplineId?: string;
@@ -17,10 +19,11 @@ interface FeedbackParams {
 
 export async function getFeedbacks(
   params: FeedbackParams,
+  signal?: AbortSignal,
 ): Promise<PagedResultDto<FeedbackDto>> {
   const response = await api.get<ApiSuccessResult<PagedResultDto<FeedbackDto>>>(
     "/Feedback",
-    { params },
+    { params, signal },
   );
   return response.data.data;
 }

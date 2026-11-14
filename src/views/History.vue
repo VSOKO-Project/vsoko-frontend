@@ -2,39 +2,23 @@
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
 import { ref } from "vue";
 import { getFeedbacks, deleteFeedback, updateFeedback } from "../api/feedback";
-import { getTeachers } from "../api/teachers";
-import { getDisciplines } from "../api/disciplines";
 import { getCriteria } from "../api/criteria";
 import { useResource, useAction } from "../composables/resource";
 import type { FeedbackDto } from "../types";
+import { confirmAction } from "../composables/confirmation";
 import LoadState from "../components/LoadState.vue";
 import Pagination from "../components/Pagination.vue";
 import Modal from "../components/Modal.vue";
 import Rating from "../components/Rating.vue";
-const props = defineProps<{ admin?: boolean }>();
 const page = ref(1);
-const teacher = ref("");
-const discipline = ref("");
 const { data, loading, error, refresh } = useResource(
   () =>
     getFeedbacks({
       Page: page.value,
       PageSize: DEFAULT_PAGE_SIZE,
-      TeacherId: teacher.value || undefined,
-      DisciplineId: discipline.value || undefined,
+      Sort: "Newest",
     }),
-  [page, teacher, discipline],
-);
-const options = useResource(async () =>
-  props.admin
-    ? {
-        teachers: (await getTeachers({ Page: 1, PageSize: 100 }))
-          .items,
-        disciplines: (
-          await getDisciplines({ Page: 1, PageSize: 100 })
-        ).items,
-      }
-    : { teachers: [], disciplines: [] },
+  [page],
 );
 const criteria = useResource(() => getCriteria());
 const selected = ref<FeedbackDto>();
@@ -53,7 +37,12 @@ function edit(fb: FeedbackDto) {
 }
 async function remove(fb: FeedbackDto) {
   if (
-    confirm("Удалить этот отзыв?") &&
+    (await confirmAction({
+      title: "Удалить отзыв?",
+      description: "Отзыв и выставленные в нём оценки будут удалены.",
+      confirmText: "Удалить",
+      danger: true,
+    })) &&
     (await action.run(() => deleteFeedback(fb.id), "Отзыв удалён"))
   ) {
     selected.value = undefined;
@@ -83,36 +72,8 @@ async function save() {
 </script>
 <template>
   <div class="page-header">
-    <span class="eyebrow">ОБРАТНАЯ СВЯЗЬ</span>
-    <h1 class="page-title">{{ admin ? "Все отзывы" : "Мои оценки" }}</h1>
-    <p class="page-subtitle">
-      {{
-        admin
-          ? "Комментарии и оценки студентов"
-          : "История вашего участия. Оценки открытого периода можно изменить."
-      }}
-    </p>
-  </div>
-  <div v-if="admin" class="toolbar">
-    <select v-model="teacher" aria-label="Преподаватель" @change="page = 1">
-      <option value="">Все преподаватели</option>
-      <option
-        v-for="t in options.data.value?.teachers"
-        :key="t.id"
-        :value="t.id"
-      >
-        {{ t.fullName }}
-      </option></select
-    ><select v-model="discipline" aria-label="Дисциплина" @change="page = 1">
-      <option value="">Все дисциплины</option>
-      <option
-        v-for="d in options.data.value?.disciplines"
-        :key="d.id"
-        :value="d.id"
-      >
-        {{ d.name }}
-      </option>
-    </select>
+    <h1 class="page-title">Мои оценки</h1>
+    <p class="page-subtitle">Оценки открытого периода можно изменить.</p>
   </div>
   <p v-if="action.error.value" class="error-text" role="alert">
     {{ action.error.value }}
@@ -161,11 +122,8 @@ async function save() {
           />
         </div>
         <blockquote v-if="fb.comment">{{ fb.comment }}</blockquote>
-        <div
-          class="feedback-actions"
-          v-if="admin || fb.workload.period?.isFeedbackOpen"
-        >
-          <button v-if="!admin" class="btn btn--secondary" @click="edit(fb)">
+        <div class="feedback-actions" v-if="fb.workload.period?.isFeedbackOpen">
+          <button class="btn btn--secondary" @click="edit(fb)">
             Редактировать</button
           ><button
             class="btn btn--ghost"

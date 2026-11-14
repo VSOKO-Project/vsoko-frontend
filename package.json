@@ -16,20 +16,21 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "reka-ui": "2.11.0",
     "vue": "3.5.45",
     "vue-router": "4.6.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "6.0.11",
-    "vite": "8.0.8",
-    "typescript": "6.0.3",
-    "vue-tsc": "3.3.14",
     "@playwright/test": "1.65.0",
-    "vitest": "5.1.0",
+    "@types/node": "24.12.2",
+    "@vitejs/plugin-vue": "6.0.11",
+    "@vitest/coverage-v8": "5.1.0",
     "@vue/test-utils": "2.5.1",
     "jsdom": "31.0.0",
-    "@types/node": "24.12.2",
-    "@vitest/coverage-v8": "5.1.0"
+    "typescript": "6.0.3",
+    "vite": "8.0.8",
+    "vitest": "5.1.0",
+    "vue-tsc": "3.3.14"
   },
   "packageManager": "pnpm@10.30.3"
 }

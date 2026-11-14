@@ -1,0 +1,400 @@
+<script setup lang="ts">
+import { ref, computed, watch } from "vue";
+import { getSuggestedPeriods } from "../api/periods";
+import {
+  applyImport,
+  previewImport,
+  getImportGroups,
+  getPeriodTeachers,
+  downloadCredentials,
+  downloadImportTemplate,
+  exportPeriod,
+  getImportErrorReport,
+} from "../api/import";
+import { useResource, useAction } from "../composables/resource";
+import { saveBlob } from "../utils/download";
+import type { ImportReportDto, Term } from "../types";
+import LoadState from "../components/LoadState.vue";
+const periodKey = ref("");
+const file = ref<File>();
+const fileVersion = ref(0);
+const fileError = ref("");
+const applied = ref<ImportReportDto>();
+const applyReport = ref<ImportReportDto>();
+const dragging = ref(false);
+const groupIds = ref<string[]>([]);
+const teacherIds = ref<string[]>([]);
+const teacherSearch = ref("");
+const action = useAction();
+const downloads = useAction();
+const periods = useResource((signal) => getSuggestedPeriods(signal));
+const groups = useResource((signal) => getImportGroups(signal));
+watch(periods.data, (items) => {
+  if (!periodKey.value && items?.length) {
+    const current = items.find((p) => p.isCurrent) || items[0]!;
+    periodKey.value = `${current.startYear}:${current.term}`;
+  }
+});
+const selected = computed(() =>
+  periods.data.value?.find(
+    (p) => `${p.startYear}:${p.term}` === periodKey.value,
+  ),
+);
+const params = computed(() => {
+  const [year, term] = periodKey.value.split(":");
+  return { startYear: Number(year), term: term as Term };
+});
+const teachers = useResource(
+  (signal) =>
+    selected.value?.exists
+      ? getPeriodTeachers(params.value, signal)
+      : Promise.resolve([]),
+  [periodKey, () => selected.value?.exists],
+);
+const preview = useResource(
+  (signal) =>
+    file.value && periodKey.value
+      ? previewImport({ file: file.value, ...params.value }, signal)
+      : Promise.resolve(undefined),
+  [periodKey, fileVersion],
+);
+watch(periodKey, () => {
+  teacherIds.value = [];
+  applyReport.value = undefined;
+  applied.value = undefined;
+});
+const report = computed(() => applyReport.value || preview.data.value);
+const labels: Record<keyof ImportReportDto["summary"], string> = {
+  groups: "Группы",
+  students: "Студенты",
+  teachers: "Преподаватели",
+  disciplines: "Дисциплины",
+  workloads: "Нагрузка",
+};
+function selectFile(value?: File) {
+  if (!value) return;
+  fileError.value = "";
+  if (!value.name.toLowerCase().endsWith(".xlsx")) {
+    fileError.value = "Принимается только файл .xlsx";
+    return;
+  }
+  if (value.size > 5 * 1024 * 1024) {
+    fileError.value = "Файл больше 5 МБ";
+    return;
+  }
+  file.value = value;
+  fileVersion.value++;
+  applied.value = undefined;
+  applyReport.value = undefined;
+}
+function fileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  selectFile(input.files?.[0]);
+  input.value = "";
+}
+function drop(event: DragEvent) {
+  dragging.value = false;
+  if (!action.pending.value) selectFile(event.dataTransfer?.files[0]);
+}
+async function apply() {
+  if (
+    !file.value ||
+    !report.value ||
+    report.value.errors.length ||
+    preview.loading.value
+  )
+    return;
+  const chosenFile = file.value;
+  const chosenPeriod = { ...params.value };
+  if (
+    !confirm(
+      `Импортировать данные за «${report.value.period.title}»?${report.value.workloadsToDelete.length ? ` Будет удалено нагрузок: ${report.value.workloadsToDelete.length}.` : ""}`,
+    )
+  )
+    return;
+  const ok = await action.run(async () => {
+    try {
+      applied.value = await applyImport({ file: chosenFile, ...chosenPeriod });
+    } catch (error) {
+      applyReport.value = getImportErrorReport(error) || undefined;
+      throw error;
+    }
+  }, "Импорт выполнен");
+  if (ok) {
+    file.value = undefined;
+    fileVersion.value++;
+    await Promise.all([
+      periods.refresh(),
+      groups.refresh(),
+      teachers.refresh(),
+    ]);
+  }
+}
+async function download(
+  kind: "template" | "period" | "credentials",
+  ids = groupIds.value,
+) {
+  await downloads.run(async () => {
+    const blob =
+      kind === "template"
+        ? await downloadImportTemplate()
+        : kind === "period"
+          ? await exportPeriod(params.value, teacherIds.value)
+          : await downloadCredentials(ids);
+    saveBlob(
+      blob,
+      kind === "template"
+        ? "vsoko-import-template.xlsx"
+        : kind === "period"
+          ? `vsoko-${params.value.startYear}-${params.value.term}.xlsx`
+          : "vsoko-credentials.xlsx",
+    );
+  });
+}
+</script>
+<template>
+  <div class="page-header">
+    <span class="eyebrow">ДАННЫЕ УНИВЕРСИТЕТА</span>
+    <h1 class="page-title">Импорт</h1>
+    <p class="page-subtitle">
+      Загрузка студентов и нагрузки из Excel с проверкой перед сохранением.
+    </p>
+  </div>
+  <p
+    v-if="downloads.error.value || action.error.value"
+    role="alert"
+    class="error-text"
+  >
+    {{ downloads.error.value || action.error.value }}
+  </p>
+  <fieldset :disabled="action.pending.value" class="import-fieldset">
+    <section class="card stack">
+      <h2>1. Семестр и файл</h2>
+      <p class="muted">
+        Скачайте нагрузку семестра, внесите изменения в Excel и загрузите
+        обратно. Новые строки добавятся, удалённые уберутся. Нагрузка с отзывами
+        не удаляется.
+      </p>
+      <LoadState
+        :loading="periods.loading.value"
+        :error="periods.error.value"
+        @retry="periods.refresh"
+        ><label class="field"
+          >Семестр<select v-model="periodKey">
+            <option value="" disabled>Выберите семестр</option>
+            <option
+              v-for="p in periods.data.value"
+              :key="`${p.startYear}:${p.term}`"
+              :value="`${p.startYear}:${p.term}`"
+            >
+              {{ p.title }}{{ p.isCurrent ? " — текущий" : ""
+              }}{{ !p.exists ? " (будет создан)" : "" }}
+            </option>
+          </select></label
+        ></LoadState
+      >
+      <details v-if="selected?.exists && teachers.data.value?.length">
+        <summary>
+          Выбрать преподавателей для выгрузки ({{ teacherIds.length || "все" }})
+        </summary>
+        <input
+          v-model="teacherSearch"
+          type="search"
+          aria-label="Поиск преподавателей для выгрузки"
+          placeholder="Поиск по ФИО"
+        />
+        <div class="group-picker">
+          <label
+            v-for="t in teachers.data.value.filter((t) =>
+              t.fullName.toLowerCase().includes(teacherSearch.toLowerCase()),
+            )"
+            :key="t.id"
+            ><input v-model="teacherIds" type="checkbox" :value="t.id" />{{
+              t.fullName
+            }}</label
+          >
+        </div>
+        <button class="text-link" @click="teacherIds = []">
+          Сбросить выбор
+        </button>
+      </details>
+      <div class="feedback-actions">
+        <button
+          v-if="selected?.exists"
+          class="btn btn--primary"
+          :disabled="downloads.pending.value"
+          @click="download('period')"
+        >
+          Скачать данные семестра</button
+        ><button
+          class="btn btn--secondary"
+          :disabled="downloads.pending.value"
+          @click="download('template')"
+        >
+          Пустой шаблон ↓
+        </button>
+      </div>
+    </section>
+    <section class="card stack">
+      <h2>2. Загрузка файла</h2>
+      <p class="muted">
+        Сначала файл проверяется. Данные сохранятся после нажатия
+        «Импортировать».
+      </p>
+      <label
+        class="dropzone"
+        :class="{ 'dropzone--active': dragging }"
+        @dragover.prevent="dragging = true"
+        @dragleave="dragging = false"
+        @drop.prevent="drop"
+        ><span class="intro-symbol">↑</span
+        ><span>Перетащите файл .xlsx сюда или выберите на устройстве</span
+        ><input
+          type="file"
+          accept=".xlsx"
+          aria-label="Файл для импорта"
+          @change="fileChange"
+        /><strong v-if="file">{{ file.name }}</strong></label
+      >
+      <p v-if="fileError" class="error-text" role="alert">{{ fileError }}</p>
+    </section>
+    <section v-if="file" class="card stack">
+      <h2>3. Проверка</h2>
+      <LoadState
+        :loading="preview.loading.value"
+        :error="preview.error.value"
+        @retry="preview.refresh"
+        ><template v-if="report"
+          ><p class="muted">
+            Период: {{ report.period.title
+            }}{{
+              report.period.willBeCreated ? " — будет создан, сбор закрыт" : ""
+            }}
+          </p>
+          <div class="import-summary">
+            <div
+              v-for="(counts, key) in report.summary"
+              :key="key"
+              class="import-summary__card"
+            >
+              <span>{{ labels[key] }}</span>
+              <div>
+                <strong>{{ counts.create }}</strong> создать ·
+                {{ counts.existing }} уже есть
+                <span v-if="counts.delete">· {{ counts.delete }} удалить</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="report.workloadsToDelete.length" class="table-wrapper">
+            <table>
+              <caption>
+                Будет удалено из нагрузки:
+                {{
+                  report.workloadsToDelete.length
+                }}
+              </caption>
+              <thead>
+                <tr>
+                  <th>Преподаватель</th>
+                  <th>Дисциплина</th>
+                  <th>Группа</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(w, i) in report.workloadsToDelete" :key="i">
+                  <td>{{ w.teacher }}</td>
+                  <td>{{ w.discipline }}</td>
+                  <td>{{ w.group }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-for="kind in ['errors', 'warnings'] as const" :key="kind">
+            <div v-if="report[kind].length" class="table-wrapper">
+              <table>
+                <caption>
+                  {{
+                    kind === "errors" ? "Ошибки" : "Предупреждения"
+                  }}:
+                  {{
+                    report[kind].length
+                  }}
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Лист</th>
+                    <th>Строка</th>
+                    <th>Сообщение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(issue, i) in report[kind]" :key="i">
+                    <td>{{ issue.sheet }}</td>
+                    <td>{{ issue.row }}</td>
+                    <td>{{ issue.message }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p v-if="report.errors.length" class="error-text">
+            Исправьте ошибки и загрузите файл снова.
+          </p>
+          <button
+            class="btn btn--primary"
+            :disabled="
+              !!report.errors.length || preview.loading.value || !periodKey
+            "
+            @click="apply"
+          >
+            {{ action.pending.value ? "Импортируем…" : "Импортировать" }}
+          </button></template
+        ></LoadState
+      >
+    </section>
+  </fieldset>
+  <section v-if="applied" class="card stack">
+    <h2>Импорт выполнен</h2>
+    <p>{{ applied.period.title }}</p>
+    <button
+      v-if="applied.studentGroupIds?.length"
+      class="btn btn--secondary"
+      :disabled="downloads.pending.value"
+      @click="download('credentials', applied.studentGroupIds)"
+    >
+      Скачать логины и пароли
+    </button>
+  </section>
+  <section class="card stack">
+    <h2>Логины и пароли</h2>
+    <p class="muted">
+      Логин — номер зачётки, временный пароль — Vsoko и номер зачётки. В
+      выгрузке у сменивших пароль студентов пароль не показывается. Без выбора
+      выгружаются все группы.
+    </p>
+    <LoadState
+      :loading="groups.loading.value"
+      :error="groups.error.value"
+      @retry="groups.refresh"
+      ><div class="group-picker">
+        <label v-for="g in groups.data.value" :key="g.id"
+          ><input v-model="groupIds" type="checkbox" :value="g.id" />{{
+            g.name
+          }}</label
+        >
+      </div>
+      <button
+        class="btn btn--secondary"
+        :disabled="downloads.pending.value"
+        @click="download('credentials')"
+      >
+        {{
+          groupIds.length
+            ? `Скачать (${groupIds.length})`
+            : "Скачать для всех групп"
+        }}
+        ↓
+      </button></LoadState
+    >
+  </section>
+</template>

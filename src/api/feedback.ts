@@ -1,5 +1,11 @@
-import api from './axios';
-import type { ApiSuccessResult, FeedbackDto, PagedResultDto, PostFeedbackRequest, PutFeedbackRequest } from '../types';
+import api from "./client";
+import type {
+  ApiSuccessResult,
+  FeedbackDto,
+  PagedResultDto,
+  PostFeedbackRequest,
+  PutFeedbackRequest,
+} from "../types";
 
 interface FeedbackParams {
   Page?: number;
@@ -9,18 +15,27 @@ interface FeedbackParams {
   WorkloadId?: string;
 }
 
-export async function getFeedbacks(params: FeedbackParams): Promise<PagedResultDto<FeedbackDto>> {
-  const response = await api.get<ApiSuccessResult<PagedResultDto<FeedbackDto>>>('/Feedback', { params });
+export async function getFeedbacks(
+  params: FeedbackParams,
+): Promise<PagedResultDto<FeedbackDto>> {
+  const response = await api.get<ApiSuccessResult<PagedResultDto<FeedbackDto>>>(
+    "/Feedback",
+    { params },
+  );
   return response.data.data;
 }
 
 export async function getFeedbackById(id: string): Promise<FeedbackDto> {
-  const response = await api.get<ApiSuccessResult<FeedbackDto>>(`/Feedback/${id}`);
+  const response = await api.get<ApiSuccessResult<FeedbackDto>>(
+    `/Feedback/${id}`,
+  );
   return response.data.data;
 }
 
-export async function createFeedback(data: PostFeedbackRequest): Promise<string> {
-  const response = await api.post<ApiSuccessResult<string>>('/Feedback', data);
+export async function createFeedback(
+  data: PostFeedbackRequest,
+): Promise<string> {
+  const response = await api.post<ApiSuccessResult<string>>("/Feedback", data);
   return response.data.data;
 }
 

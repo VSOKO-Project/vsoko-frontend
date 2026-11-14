@@ -1,91 +1,50 @@
 # VSOKO Frontend
 
-Web app: feedback forms for students; criteria, ratings, reports, and AI summaries for admins.
+Vue 3 + TypeScript + Vite. The frontend uses the existing VSOKO API and is deployed to https://vsoko.tech through GitLab CI, Docker, nginx and Kubernetes.
 
-Stack: React 19, TypeScript, Vite, TanStack Query, nginx.
+The redesign follows the supplied VSOKO design boards: Literata headings, Golos Text body copy, teal controls, neutral surfaces, numeric ratings and light/dark/system themes. Fonts are served locally; their license is included in `public/fonts/LICENSE.txt`.
 
-## What it does
+## Development
 
-One single-page app for both students and admins. Students see their workloads and
-rate them. Admins manage criteria, browse ratings and feedback, download the PDF
-report, and read AI summaries. The app only talks to `vsoko-api` and is served by
-nginx.
+Requires Node 24+ and pnpm 10.30.3. Docker and CI use Node 24.
 
-```mermaid
-flowchart LR
-  U[browser] -->|vsoko.tech| T[Traefik]
-  T --> S((nginx<br>vsoko-frontend))
-  U -->|REST + JWT| API[vsoko-api]
+```sh
+corepack enable
+corepack prepare pnpm@10.30.3 --activate
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-## Features
+Set `VITE_API_BASE_URL` to the API root, such as `https://api.vsoko.tech/api`. It defaults to `/api`. `VITE_DEFAULT_PAGE_SIZE` defaults to 10. The API URL is embedded at build time.
 
-- **Separate areas by role** — students and admins get their own navigation; routes are guarded by `ProtectedRoute` / `AdminRoute`.
-- **Forced password change** — accounts with a temporary password are sent to `/change-password` until they set a new one.
-- **Feedback forms** — score a workload on every criterion and leave a comment; view and edit your own feedback.
-- **Admin dashboard** — teacher and course ratings with charts, feedback list, criteria, PDF report, AI summaries.
-- **Sessions** — JWT with refresh through axios, server data in TanStack Query, session in Zustand.
+## Functionality
 
-### Routes
+- Login, refresh rotation, cross-tab session locking, logout and forced password change. Existing `vsoko.auth.v1` sessions are retained.
+- Student workloads, criteria-based feedback, device-local drafts isolated by account and workload, feedback history, editing and deletion during open periods.
+- Administrator overview with period filters, teacher/discipline results, feedback, editable catalogs, record merging, criteria, AI summaries, PDF reports and period management.
+- Excel import preview/apply, validation issues, proposed deletions, semester export, teacher selection and credential downloads.
+- Responsive navigation, system/light/dark themes, keyboard rating controls, native modal focus management, loading/error/empty states and 404.
 
-| Area | Path | Page |
-| --- | --- | --- |
-| Public | `/login` | sign-in |
-| Any user | `/change-password` | password change |
-| Student | `/workloads`, `/feedback/new`, `/my-feedback` | workloads, feedback form, own feedback |
-| Admin | `/dashboard` | overview |
-| Admin | `/teachers`, `/teachers/rating`, `/disciplines`, `/disciplines/rating` | lists and ratings |
-| Admin | `/feedback`, `/criteria`, `/summaries`, `/reports` | feedback, criteria, AI summaries, PDF report |
+The frontend only displays data and capabilities supplied by the existing API. The mockup's additional features (faculty/department filtering, semester-comparison reports, CSV, anonymity thresholds and comment redaction) need backend contracts and are not represented as implemented guarantees.
 
-## Quick start
+## Validation
 
-### With Docker
+```sh
+pnpm test:coverage                     # unit, component, session, API and route integration tests
+VITE_API_BASE_URL=/api pnpm build       # Vue TypeScript check and production bundle
+pnpm exec playwright install chromium
+pnpm test:e2e                          # desktop + mobile, actual dist bundle with isolated API fixtures
+```
 
-The API URL and page size are baked in at build time:
+Browser tests serve the built `dist/` files through Playwright request interception at `https://vsoko.test`; no listening dev server is required. API fixtures only exist in test files. Run the build again before browser tests after source edits. This suite covers frontend behavior; it does not replace validation against the production API.
 
-```bash
-docker build \
-  --build-arg VITE_API_BASE_URL=http://localhost:8000/api \
-  --build-arg VITE_DEFAULT_PAGE_SIZE=10 \
-  -t vsoko-frontend .
+CI runs unit/integration tests, type checking, the production build and browser tests before building a production container. The existing protected-branch manual `deploy` job applies Kubernetes manifests and waits for rollout. Browser reports and failure traces are retained as CI artifacts.
+
+## Production
+
+```sh
+docker build --build-arg VITE_API_BASE_URL=https://api.vsoko.tech/api -t vsoko-frontend .
 docker run --rm -p 8001:80 vsoko-frontend
 ```
 
-### Locally
-
-```bash
-npm install
-echo "VITE_API_BASE_URL=http://localhost:8000/api" >  .env.local
-echo "VITE_DEFAULT_PAGE_SIZE=10"                     >> .env.local
-npm run dev      # http://localhost:5173
-npm run build
-```
-
-## Structure
-
-```text
-vsoko-frontend/
-├── Dockerfile             # node build → nginx
-├── nginx.conf             # SPA fallback, gzip, static asset caching
-└── src/
-    ├── api/               # axios client and endpoint wrappers
-    ├── components/        # layout, ui, ProtectedRoute, AdminRoute, Pagination, SearchInput
-    ├── hooks/             # TanStack Query hooks, pagination
-    ├── pages/             # LoginPage, ChangePasswordPage
-    │   ├── student/       # workloads, feedback form, my feedback
-    │   └── admin/         # dashboard, ratings, teachers, disciplines, criteria, feedback, summaries, reports
-    ├── store/             # Zustand stores
-    ├── types/             # API types
-    └── utils/             # constants, helpers
-```
-
-## CI
-
-The pipeline builds the Docker image from `main` and publishes it to GitLab
-Container Registry with the commit SHA as its tag. The production build uses `VITE_API_BASE_URL=https://api.vsoko.tech/api`
-from `.gitlab-ci.yml`. Set `VITE_DEFAULT_PAGE_SIZE` in CI/CD variables. After a successful build on the protected default branch, the manual `deploy` job
-applies Kubernetes manifests through GitLab Agent and waits for the rollout.
-
-## Kubernetes
-
-Манифесты и порядок запуска: [k8s/README.md](k8s/README.md).
+Deploy the tested default-branch pipeline with its existing manual `deploy` job. Roll back by deploying the preceding known-good image SHA through the same Kubernetes manifests. No API or infrastructure changes are required by this frontend release.

@@ -1,71 +1,58 @@
-import axios, { CanceledError } from 'axios';
-import { useAuthStore } from '../store/authStore';
-import type { ApiSuccessResult, LoginResultDto } from '../types';
-import { API_BASE_URL } from '../utils/constants';
-
-export const authClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 15_000,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-// Web Locks serialize token-consuming operations across all tabs on this origin.
+import { auth, syncSession, installSession, clearSession } from "../store/auth";
+import { ApiError, transport } from "./transport";
+import type { ApiSuccessResult, LoginResultDto } from "../types";
 export async function withSessionLock<T>(action: () => Promise<T>): Promise<T> {
-  if (!navigator.locks) {
-    return Promise.reject(new Error('Для входа нужен современный браузер и HTTPS.'));
-  }
-  return await navigator.locks.request('vsoko.auth', action);
+  if (!navigator.locks)
+    throw new Error("Для входа нужен современный браузер и HTTPS.");
+  return navigator.locks.request("vsoko.auth", action);
 }
-
-let pendingRefresh: { version: number; promise: Promise<LoginResultDto | void> } | undefined;
-let refreshFailure: { token: string; until: number; error: unknown } | undefined;
-
 export function assertCurrentSession(version: number) {
-  useAuthStore.getState().syncFromStorage();
-  if (useAuthStore.getState().sessionVersion !== version) throw new CanceledError('Session changed');
+  syncSession();
+  if (auth.version !== version)
+    throw new DOMException("Session changed", "AbortError");
 }
-
-export async function waitForRefresh() {
-  if (pendingRefresh?.version === useAuthStore.getState().sessionVersion) await pendingRefresh.promise;
-}
-
-// Caller must hold withSessionLock; exported for password change's expired-token path.
-export async function refreshSessionLocked(version: number): Promise<LoginResultDto> {
+let pending: { version: number; promise: Promise<void> } | undefined;
+let failure: { token: string; until: number; error: unknown } | undefined;
+export async function refreshSessionLocked(version: number) {
   assertCurrentSession(version);
-  const { refreshToken } = useAuthStore.getState();
-  if (!refreshToken) throw new CanceledError('No active session');
-  if (refreshFailure?.token === refreshToken && refreshFailure.until > Date.now()) throw refreshFailure.error;
+  const token = auth.session?.data.refreshToken;
+  if (!token) throw new DOMException("Signed out", "AbortError");
+  if (failure?.token === token && failure.until > Date.now())
+    throw failure.error;
   try {
-    const { data } = await authClient.post<ApiSuccessResult<LoginResultDto>>('/Security/Refresh', { refresh: refreshToken });
+    const response = await transport<ApiSuccessResult<LoginResultDto>>(
+      "POST",
+      "/Security/Refresh",
+      { refresh: token },
+    );
     assertCurrentSession(version);
-    useAuthStore.getState().updateSession(data.data);
-    refreshFailure = undefined;
-    return data.data;
+    installSession(response.data.data);
+    failure = undefined;
   } catch (error) {
     assertCurrentSession(version);
-    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-    if (status === 401 || status === 403) {
-      useAuthStore.getState().logout();
-    } else if (!axios.isCancel(error)) {
-      // Keep credentials during outages; avoid an immediate retry storm.
-      refreshFailure = { token: refreshToken, until: Date.now() + 5_000, error };
-    }
+    if (error instanceof ApiError && [401, 403].includes(error.response.status))
+      clearSession();
+    else failure = { token, until: Date.now() + 5000, error };
     throw error;
   }
 }
-
-export function refreshSession(): Promise<LoginResultDto | void> {
-  useAuthStore.getState().syncFromStorage();
-  const { sessionVersion: version, refreshToken } = useAuthStore.getState();
-  if (pendingRefresh?.version === version) return pendingRefresh.promise;
+export function refreshSession() {
+  syncSession();
+  const version = auth.version;
+  const token = auth.session?.data.refreshToken;
+  if (pending?.version === version) return pending.promise;
   const promise = withSessionLock(async () => {
     assertCurrentSession(version);
-    // Another tab may have refreshed while this one was waiting for the lock.
-    if (useAuthStore.getState().refreshToken !== refreshToken) return;
-    return refreshSessionLocked(version);
+    if (auth.session?.data.refreshToken !== token) return;
+    await refreshSessionLocked(version);
   });
-  pendingRefresh = { version, promise };
-  const clear = () => { if (pendingRefresh?.promise === promise) pendingRefresh = undefined; };
+  pending = { version, promise };
+  const clear = () => {
+    if (pending?.promise === promise) pending = undefined;
+  };
   void promise.then(clear, clear);
   return promise;
+}
+export async function waitForRefresh() {
+  if (pending?.version === auth.version) await pending.promise;
 }

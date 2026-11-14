@@ -1,23 +1,40 @@
-import api from './axios';
-import type { ApiSuccessResult, CriteriaDto, PostCriteriaCommandRequest, PutCriteriaCommandRequest } from '../types';
+import api from "./client";
+import type {
+  ApiSuccessResult,
+  CriteriaDto,
+  PostCriteriaCommandRequest,
+  PutCriteriaCommandRequest,
+} from "../types";
 
 export async function getCriteria(): Promise<CriteriaDto[]> {
-  const response = await api.get<ApiSuccessResult<CriteriaDto[]>>('/Criteria');
+  const response = await api.get<ApiSuccessResult<CriteriaDto[]>>("/Criteria");
   return response.data.data;
 }
 
 export async function getCriteriaById(id: string): Promise<CriteriaDto> {
-  const response = await api.get<ApiSuccessResult<CriteriaDto>>(`/Criteria/${id}`);
+  const response = await api.get<ApiSuccessResult<CriteriaDto>>(
+    `/Criteria/${id}`,
+  );
   return response.data.data;
 }
 
-export async function createCriteria(data: PostCriteriaCommandRequest): Promise<CriteriaDto> {
-  const response = await api.post<ApiSuccessResult<CriteriaDto>>('/Criteria', data);
+export async function createCriteria(
+  data: PostCriteriaCommandRequest,
+): Promise<CriteriaDto> {
+  const response = await api.post<ApiSuccessResult<CriteriaDto>>(
+    "/Criteria",
+    data,
+  );
   return response.data.data;
 }
 
-export async function updateCriteria(data: PutCriteriaCommandRequest): Promise<CriteriaDto> {
-  const response = await api.put<ApiSuccessResult<CriteriaDto>>(`/Criteria/${data.id}`, data);
+export async function updateCriteria(
+  data: PutCriteriaCommandRequest,
+): Promise<CriteriaDto> {
+  const response = await api.put<ApiSuccessResult<CriteriaDto>>(
+    `/Criteria/${data.id}`,
+    data,
+  );
   return response.data.data;
 }
 

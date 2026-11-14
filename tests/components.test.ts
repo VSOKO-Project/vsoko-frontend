@@ -92,3 +92,20 @@ it("keeps a custom menu disabled during a pending action", async () => {
   expect(wrapper.get("[role=combobox]").attributes("disabled")).toBeDefined();
   wrapper.unmount();
 });
+
+it.each(["table", "cards", "form", "dashboard"] as const)(
+  "replaces the %s skeleton with content after loading",
+  async (skeleton) => {
+    const wrapper = mount(LoadState, {
+      props: { loading: true, skeleton },
+      slots: { default: '<p class="loaded">Результат</p>' },
+    });
+    expect(wrapper.findAll(".skeleton-block").length).toBeGreaterThan(0);
+    expect(wrapper.get("[role=status]").attributes("aria-busy")).toBe("true");
+    expect(wrapper.get(".sr-only").text()).toContain("Загружаем");
+    expect(wrapper.find(".loaded").exists()).toBe(false);
+    await wrapper.setProps({ loading: false });
+    expect(wrapper.find(".loading-skeleton").exists()).toBe(false);
+    expect(wrapper.get(".loaded").text()).toBe("Результат");
+  },
+);

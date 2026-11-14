@@ -48,6 +48,7 @@ async function toggle(period: PeriodDto, event: Event) {
     {{ action.success.value }}
   </p>
   <LoadState
+    skeleton="cards"
     :loading="loading"
     :error="error"
     :empty="!data?.length"

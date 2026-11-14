@@ -186,6 +186,7 @@ async function merge() {
     {{ action.error.value }}
   </p>
   <LoadState
+    skeleton="table"
     :loading="loading"
     :error="error"
     :empty="!data?.items.length"
@@ -275,6 +276,7 @@ async function merge() {
         placeholder="Начните вводить название"
     /></label>
     <LoadState
+      skeleton="cards"
       :loading="mergeResults.loading.value"
       :error="mergeResults.error.value"
       @retry="mergeResults.refresh"

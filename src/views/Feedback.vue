@@ -71,7 +71,7 @@ async function submit() {
       Оцените каждый критерий от 1 до 5. Черновик сохраняется на устройстве.
     </p>
   </div>
-  <LoadState :loading="loading" :error="error" @retry="refresh"
+  <LoadState skeleton="form" :loading="loading" :error="error" @retry="refresh"
     ><template v-if="data"
       ><div class="card feedback-editor">
         <article class="feedback-context">

@@ -19,6 +19,12 @@ import AppSelect from "../components/AppSelect.vue";
 import LoadState from "../components/LoadState.vue";
 const periodKey = ref("");
 const file = ref<File>();
+const fileInput = ref<HTMLInputElement>();
+const fileSize = computed(() =>
+  file.value
+    ? `${Math.max(1, Math.ceil(file.value.size / 1024)).toLocaleString("ru-RU")} КБ`
+    : "",
+);
 const fileVersion = ref(0);
 const fileError = ref("");
 const applied = ref<ImportReportDto>();
@@ -54,10 +60,16 @@ const teachers = useResource(
   [periodKey, () => selected.value?.exists],
 );
 const preview = useResource(
-  (signal) =>
-    file.value && periodKey.value
-      ? previewImport({ file: file.value, ...params.value }, signal)
-      : Promise.resolve(undefined),
+  async (signal) => {
+    if (!file.value || !periodKey.value) return undefined;
+    const sourceFile = file.value;
+    const sourcePeriod = periodKey.value;
+    const result = await previewImport(
+      { file: sourceFile, ...params.value },
+      signal,
+    );
+    return { report: result, file: sourceFile, period: sourcePeriod };
+  },
   [periodKey, fileVersion],
 );
 watch(periodKey, () => {
@@ -65,7 +77,14 @@ watch(periodKey, () => {
   applyReport.value = undefined;
   applied.value = undefined;
 });
-const report = computed(() => applyReport.value || preview.data.value);
+const report = computed(
+  () =>
+    applyReport.value ||
+    (preview.data.value?.file === file.value &&
+    preview.data.value?.period === periodKey.value
+      ? preview.data.value?.report
+      : undefined),
+);
 const labels: Record<keyof ImportReportDto["summary"], string> = {
   groups: "Группы",
   students: "Студенты",
@@ -94,6 +113,13 @@ function fileChange(event: Event) {
   selectFile(input.files?.[0]);
   input.value = "";
 }
+function leaveDropzone(event: DragEvent) {
+  if (
+    !(event.relatedTarget instanceof Node) ||
+    !(event.currentTarget as HTMLElement).contains(event.relatedTarget)
+  )
+    dragging.value = false;
+}
 function drop(event: DragEvent) {
   dragging.value = false;
   if (!action.pending.value) selectFile(event.dataTransfer?.files[0]);
@@ -103,7 +129,8 @@ async function apply() {
     !file.value ||
     !report.value ||
     report.value.errors.length ||
-    preview.loading.value
+    preview.loading.value ||
+    preview.refreshing.value
   )
     return;
   const chosenFile = file.value;
@@ -180,6 +207,7 @@ async function download(
         не удаляется.
       </p>
       <LoadState
+        skeleton="form"
         :loading="periods.loading.value"
         :error="periods.error.value"
         @retry="periods.refresh"
@@ -244,26 +272,67 @@ async function download(
         Сначала файл проверяется. Данные сохранятся после нажатия
         «Импортировать».
       </p>
-      <label
-        class="dropzone"
-        :class="{ 'dropzone--active': dragging }"
-        @dragover.prevent="dragging = true"
-        @dragleave="dragging = false"
+      <div
+        class="file-upload"
+        :class="{
+          'file-upload--active': dragging,
+          'file-upload--error': fileError,
+        }"
+        @dragover.prevent="dragging = !action.pending.value"
+        @dragleave="leaveDropzone"
         @drop.prevent="drop"
-        ><span>Перетащите файл .xlsx сюда или выберите на устройстве</span
-        ><input
-          type="file"
-          accept=".xlsx"
-          aria-label="Файл для импорта"
-          @change="fileChange"
-        /><strong v-if="file">{{ file.name }}</strong></label
       >
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          aria-label="Файл для импорта"
+          :disabled="action.pending.value"
+          hidden
+          @change="fileChange"
+        />
+        <svg
+          class="file-upload__icon"
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"
+          />
+        </svg>
+        <div class="file-upload__copy">
+          <strong>{{
+            dragging ? "Отпустите файл здесь" : "Перетащите Excel-файл сюда"
+          }}</strong
+          ><span>Формат .xlsx · до 5 МБ</span>
+        </div>
+        <button
+          type="button"
+          class="btn btn--secondary"
+          @click="fileInput?.click()"
+        >
+          {{ file ? "Заменить файл" : "Выбрать файл" }}
+        </button>
+      </div>
+      <div v-if="file" class="uploaded-file" aria-live="polite">
+        <span class="uploaded-file__type" aria-hidden="true">XLSX</span>
+        <div class="uploaded-file__info">
+          <strong>{{ file.name }}</strong
+          ><span>{{ fileSize }}</span>
+        </div>
+      </div>
       <p v-if="fileError" class="error-text" role="alert">{{ fileError }}</p>
     </section>
     <section v-if="file" class="card stack">
       <h2>3. Проверка</h2>
       <LoadState
-        :loading="preview.loading.value"
+        skeleton="cards"
+        :loading="preview.loading.value || preview.refreshing.value"
         :error="preview.error.value"
         @retry="preview.refresh"
         ><template v-if="report"
@@ -345,7 +414,10 @@ async function download(
           <button
             class="btn btn--primary"
             :disabled="
-              !!report.errors.length || preview.loading.value || !periodKey
+              !!report.errors.length ||
+              preview.loading.value ||
+              preview.refreshing.value ||
+              !periodKey
             "
             @click="apply"
           >
@@ -375,6 +447,7 @@ async function download(
       выгружаются все группы.
     </p>
     <LoadState
+      skeleton="form"
       :loading="groups.loading.value"
       :error="groups.error.value"
       @retry="groups.refresh"

@@ -82,6 +82,7 @@ async function save() {
     {{ action.success.value }}
   </p>
   <LoadState
+    skeleton="cards"
     :loading="loading"
     :error="error"
     :empty="!data?.items.length"
@@ -141,6 +142,7 @@ async function save() {
     title="Редактировать оценку"
     @close="selected = undefined"
     ><LoadState
+      skeleton="form"
       :loading="criteria.loading.value"
       :error="criteria.error.value"
       @retry="criteria.refresh"

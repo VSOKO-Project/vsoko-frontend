@@ -87,7 +87,11 @@ const strongest = computed(() =>
     </div>
     <PeriodSelect />
   </div>
-  <LoadState :loading="loading" :error="error" @retry="refresh"
+  <LoadState
+    skeleton="dashboard"
+    :loading="loading"
+    :error="error"
+    @retry="refresh"
     ><div class="stats-grid">
       <article v-for="stat in stats" :key="stat.label" class="stat-card">
         <div>

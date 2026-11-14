@@ -457,3 +457,99 @@ test("theme is in the sidebar and password visibility is an icon button", async 
     await page.getByRole("button", { name: "Открыть меню" }).click();
   await expect(page.locator(".sidebar__settings .theme-toggle")).toBeVisible();
 });
+
+test("custom upload opens picker, displays file and replaces it", async ({
+  page,
+  app,
+}) => {
+  await app.signIn(true);
+  await page.goto("/import");
+  await expect(page.getByLabel("Файл для импорта")).toBeHidden();
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Выбрать файл", exact: true }).click();
+  await (
+    await chooser
+  ).setFiles({
+    name: "нагрузка.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: Buffer.from("fixture"),
+  });
+  await expect(page.locator(".uploaded-file")).toContainText("нагрузка.xlsx");
+  await expect(page.locator(".uploaded-file")).toContainText("1 КБ");
+  await page.getByLabel("Файл для импорта").setInputFiles({
+    name: "новый.xlsx",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("replacement"),
+  });
+  await expect(page.locator(".uploaded-file")).toContainText("новый.xlsx");
+  await expect(page.locator(".uploaded-file")).not.toContainText(
+    "нагрузка.xlsx",
+  );
+});
+
+test("dropzone accepts Excel and rejects oversized files", async ({
+  page,
+  app,
+}) => {
+  await app.signIn(true);
+  await page.goto("/import");
+  await page.locator(".file-upload").evaluate((zone) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["data"], "перетаскивание.xlsx"));
+    zone.dispatchEvent(
+      new DragEvent("drop", { bubbles: true, dataTransfer: transfer }),
+    );
+  });
+  await expect(page.locator(".uploaded-file")).toContainText(
+    "перетаскивание.xlsx",
+  );
+  await page.getByLabel("Файл для импорта").setInputFiles({
+    name: "большой.xlsx",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+  });
+  await expect(page.getByRole("alert")).toContainText("Файл больше 5 МБ");
+  await expect(page.locator(".uploaded-file")).toContainText(
+    "перетаскивание.xlsx",
+  );
+});
+
+test("dashboard skeleton remains until response and respects reduced motion", async ({
+  page,
+  app,
+}, testInfo) => {
+  await app.signIn(true);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/Feedback?**", async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/dashboard");
+  await expect(page.locator(".loading-skeleton--dashboard")).toBeVisible();
+  await expect(page.locator(".skeleton-stats .skeleton-card")).toHaveCount(4);
+  expect(
+    await page
+      .locator(".skeleton-block")
+      .first()
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("none");
+  expect(
+    await page
+      .locator(".loading-skeleton .sr-only")
+      .evaluate((el) => el.getBoundingClientRect().width),
+  ).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: testInfo.outputPath("skeleton.png"),
+    fullPage: true,
+  });
+  release();
+  await expect(page.locator(".loading-skeleton")).toHaveCount(0);
+  await expect(
+    page.locator(".dashboard-stats, .stats-grid").first(),
+  ).toBeVisible();
+});

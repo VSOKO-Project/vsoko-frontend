@@ -172,6 +172,7 @@ const title = computed(() =>
       />
       <h2 class="picker-heading">{{ title }}</h2>
       <LoadState
+        skeleton="table"
         :loading="directory.loading.value"
         :error="directory.error.value"
         :empty="!directory.data.value?.items.length"
@@ -219,6 +220,7 @@ const title = computed(() =>
       {{ action.success.value }}
     </p>
     <LoadState
+      skeleton="cards"
       :loading="feedback.loading.value"
       :error="feedback.error.value"
       :empty="!feedback.data.value?.items.length"

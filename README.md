@@ -51,3 +51,7 @@ docker run --rm -p 8001:80 vsoko-frontend
 Deploy the tested default-branch pipeline with its existing manual `deploy` job. Roll back by deploying the preceding known-good image SHA through the same Kubernetes manifests. The updated feedback browser requires the accompanying API sorting changes to be deployed first. No infrastructure or database schema changes are required.
 
 Confirmations use the shared app dialog. Background refreshes retain existing data and discard stale responses; changing accounts clears private data. The saved color theme is applied in the HTML head before the app starts.
+
+## System guide
+
+[Product, architecture, integration and operations](https://gitlab.com/vsoko/specs).

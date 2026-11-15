@@ -1,8 +1,9 @@
 stages:
   - test
   - build
+  - container_scan
   - deploy
-
+  - scan
 variables:
   VITE_SHOW_PASSWORD_RESET_NOTICE: "true"
   DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
@@ -36,22 +37,25 @@ build_image:
   services:
     - docker:27.5.0-dind
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - printf '%s' "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - docker buildx create --use --driver docker-container --driver-opt network=host
-    - docker buildx build --pull --provenance=false --sbom=false
-      --build-arg VITE_API_BASE_URL=https://api.vsoko.tech/api
-      --build-arg VITE_DEFAULT_PAGE_SIZE=$VITE_DEFAULT_PAGE_SIZE
-      --build-arg VITE_SHOW_PASSWORD_RESET_NOTICE=$VITE_SHOW_PASSWORD_RESET_NOTICE
-      --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:buildcache
-      --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:buildcache,mode=max
-      -t $DOCKER_IMAGE_NAME --push .
+    - docker buildx build --pull --provenance=false --sbom=false --build-arg
+      VITE_API_BASE_URL=https://api.vsoko.tech/api --build-arg VITE_DEFAULT_PAGE_SIZE=$VITE_DEFAULT_PAGE_SIZE
+      --build-arg VITE_SHOW_PASSWORD_RESET_NOTICE=$VITE_SHOW_PASSWORD_RESET_NOTICE --cache-from
+      type=registry,ref=$CI_REGISTRY_IMAGE:buildcache --cache-to
+      type=registry,ref=$CI_REGISTRY_IMAGE:buildcache,mode=max -t $DOCKER_IMAGE_NAME --push .
   rules:
     - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
 
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ''
 deploy:
   stage: deploy
-  needs: [build_image]
+  needs:
+    - build_image
+    - trivy-image
   image:
     name: alpine/kubectl:1.37.1
     entrypoint: [""]
@@ -76,3 +80,14 @@ deploy:
     - kubectl -n vsoko wait --for=condition=Ready certificate/vsoko-frontend-tls --timeout=600s
     - kubectl apply -k k8s/
     - kubectl -n vsoko rollout status deployment/vsoko-frontend --timeout=600s
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - if: $CI_COMMIT_BRANCH
+default:
+  tags:
+    - saas-linux-small-amd64
+include:
+  - local: .gitlab/ci/security.yml

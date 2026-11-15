@@ -25,7 +25,6 @@ defineEmits<{ retry: [] }>();
 </template>
 
 <style scoped>
-.data-table { min-height: 260px; }
 .data-table table { table-layout: fixed; }
 .data-table--wide table { min-width: 480px; }
 .data-table :deep(td) { overflow-wrap: anywhere; }

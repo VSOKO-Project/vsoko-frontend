@@ -68,27 +68,6 @@
   padding: 0.5rem 0;
 }
 
-.group-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  max-height: 220px;
-  overflow-y: auto;
-  margin-bottom: 1rem;
-}
-
-.group-picker label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.88rem;
-  cursor: pointer;
-}
-
-.group-picker input {
-  width: auto;
-}
-
 .import-fieldset {
   padding: 0;
   border: 0;

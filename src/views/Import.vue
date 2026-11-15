@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MultiSelectPicker from "../components/MultiSelectPicker.vue";
 import PageHeader from "../components/PageHeader.vue";
 import { ref, computed, watch } from "vue";
 import { getSuggestedPeriods } from "../api/periods";
@@ -35,13 +36,6 @@ const applied = ref<ImportReportDto>();
 const applyReport = ref<ImportReportDto>();
 const dragging = ref(false);
 const teacherIds = ref<string[]>([]);
-const teacherSearch = ref("");
-const filteredTeachers = computed(() => {
-  const query = teacherSearch.value.trim().toLocaleLowerCase("ru-RU");
-  return (teachers.data.value || []).filter((teacher) =>
-    teacher.fullName.toLocaleLowerCase("ru-RU").includes(query),
-  );
-});
 const action = useAction();
 const downloads = useAction();
 const periods = useResource((signal) => getSuggestedPeriods(signal));
@@ -91,7 +85,7 @@ watch([periodKey, mode], () => {
   applied.value = undefined;
   action.error.value = "";
 });
-watch(periodKey, () => { teacherIds.value = []; teacherSearch.value = ""; });
+watch(periodKey, () => { teacherIds.value = []; });
 const report = computed(
   () =>
     applyReport.value ||
@@ -245,38 +239,12 @@ async function download(
               })),
             ]" /></label
       ></LoadState>
-      <details v-if="selected?.exists && teachers.data.value?.length" class="teacher-picker">
-        <summary class="teacher-picker__trigger">
-          <span class="teacher-picker__title">Преподаватели для выгрузки</span>
-          <span class="teacher-picker__count">{{ teacherIds.length ? `Выбрано: ${teacherIds.length}` : 'Все' }}</span>
-          <svg class="teacher-picker__chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </summary>
-        <div class="teacher-picker__body">
-          <div class="teacher-picker__search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.5" />
-              <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-            </svg>
-            <input v-model="teacherSearch" type="search" aria-label="Поиск преподавателей для выгрузки" placeholder="Поиск по ФИО" />
-          </div>
-          <div class="teacher-picker__list" role="group" aria-label="Преподаватели для выгрузки">
-            <label v-for="t in filteredTeachers" :key="t.id" class="teacher-picker__option" :class="{ 'teacher-picker__option--selected': teacherIds.includes(t.id) }">
-              <input v-model="teacherIds" type="checkbox" :value="t.id" />
-              <span class="teacher-picker__checkbox" aria-hidden="true">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="m3 8 3 3 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-              </span>
-              <span>{{ t.fullName }}</span>
-            </label>
-            <p v-if="!filteredTeachers.length" class="teacher-picker__empty" role="status">Преподаватели не найдены. Попробуйте другое ФИО.</p>
-          </div>
-          <div class="teacher-picker__footer">
-            <span aria-live="polite">{{ teacherIds.length ? `Выбрано ${teacherIds.length} из ${teachers.data.value.length}` : `Всего: ${teachers.data.value.length}` }}</span>
-            <button type="button" class="teacher-picker__reset" :disabled="!teacherIds.length" @click="teacherIds = []">Сбросить выбор</button>
-          </div>
-        </div>
-      </details>
+      <MultiSelectPicker v-if="selected?.exists && teachers.data.value?.length"
+        :key="periodKey" v-model="teacherIds"
+        :options="teachers.data.value.map(teacher => ({ id: teacher.id, label: teacher.fullName }))"
+        label="Преподаватели для выгрузки" search-label="Поиск преподавателей для выгрузки"
+        search-placeholder="Поиск по ФИО" empty-message="Преподаватели не найдены. Попробуйте другое ФИО."
+        :disabled="downloads.pending.value || action.pending.value" />
       <div class="feedback-actions">
         <button
           v-if="selected?.exists"
@@ -413,118 +381,3 @@ async function download(
   </section>
 
 </template>
-
-<style scoped>
-.teacher-picker {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  min-width: 0;
-}
-.teacher-picker__trigger {
-  display: flex;
-  margin: 0;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  list-style: none;
-}
-.teacher-picker__trigger::-webkit-details-marker { display: none; }
-.teacher-picker__trigger:hover { background: var(--color-bg); }
-.teacher-picker__trigger:focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 3px;
-}
-.teacher-picker__title { flex: 1; font-weight: 500; }
-.teacher-picker__count {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 5px;
-  background: var(--color-bg-secondary);
-  color: var(--color-primary);
-  font-size: 12px;
-  font-weight: 500;
-}
-.teacher-picker__chevron { flex-shrink: 0; color: var(--color-text-secondary); }
-.teacher-picker[open] .teacher-picker__chevron { transform: rotate(180deg); }
-.teacher-picker__body { padding: 12px 14px 0; border-top: 1px solid var(--color-border); }
-.teacher-picker__search { position: relative; }
-.teacher-picker__search > svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-muted);
-  pointer-events: none;
-}
-.teacher-picker__search input[type="search"] {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  padding: 10px 12px 10px 38px;
-}
-.teacher-picker__list { max-height: 252px; overflow-y: auto; overscroll-behavior: contain; padding: 8px 0; }
-.teacher-picker__option {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
-.teacher-picker__option:hover { background: var(--color-bg); }
-.teacher-picker__option--selected { background: var(--color-bg-secondary); }
-.teacher-picker__option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.teacher-picker__checkbox {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  border: 1px solid var(--color-text-muted);
-  border-radius: 4px;
-  background: var(--color-surface);
-}
-.teacher-picker__checkbox svg { visibility: hidden; }
-.teacher-picker__option input:checked + .teacher-picker__checkbox {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-button-text);
-}
-.teacher-picker__option input:checked + .teacher-picker__checkbox svg { visibility: visible; }
-.teacher-picker__option input:focus-visible + .teacher-picker__checkbox { outline: 3px solid var(--color-primary); outline-offset: 3px; }
-.teacher-picker__option:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
-.teacher-picker__empty { padding: 16px 10px; text-align: center; color: var(--color-text-secondary); font-size: 13px; }
-.teacher-picker__footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding: 8px 0;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-.teacher-picker__reset {
-  min-height: 36px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--color-primary);
-  font-size: 13px;
-  cursor: pointer;
-}
-.teacher-picker__reset:hover:enabled { background: var(--color-bg-secondary); }
-.teacher-picker__reset:disabled { color: var(--color-text-muted); opacity: 0.5; }
-@media (max-width: 480px) {
-  .teacher-picker__trigger { flex-wrap: wrap; gap: 8px; }
-  .teacher-picker__title { flex-basis: calc(100% - 24px); }
-  .teacher-picker__chevron { order: 1; }
-  .teacher-picker__count { order: 2; }
-}
-</style>

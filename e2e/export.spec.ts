@@ -14,6 +14,7 @@ test("credentials are downloaded from Export and the general block is absent fro
   await page.getByRole("button", { name: "Скачать для всех групп" }).click();
   expect(new URL((await allRequest).url()).searchParams.has("groupIds")).toBe(false);
   expect((await allDownload).suggestedFilename()).toBe("vsoko-credentials.xlsx");
+  await page.locator("summary").filter({ hasText: "Группы для выгрузки" }).click();
   await page.getByRole("checkbox", { name: "ПИ-26" }).check();
   const selectedRequest = page.waitForRequest("**/api/Import/credentials?**");
   const selectedDownload = page.waitForEvent("download");

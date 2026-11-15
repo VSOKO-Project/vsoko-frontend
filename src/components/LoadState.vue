@@ -1,5 +1,6 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { ref, watch } from "vue";
+const props = withDefaults(defineProps<{
   loading?: boolean;
   error?: string;
   empty?: boolean;
@@ -7,11 +8,18 @@ withDefaults(defineProps<{
   rows?: number;
 }>(), { skeleton: 'table', rows: 3 });
 defineEmits<{ retry: [] }>();
+const showSkeleton = ref(false);
+watch(() => props.loading, (loading, _previous, cleanup) => {
+  showSkeleton.value = false;
+  if (!loading) return;
+  const timer = setTimeout(() => { showSkeleton.value = true; }, 160);
+  cleanup(() => clearTimeout(timer));
+}, { immediate: true });
 </script>
 <template>
   <div v-if="loading" class="loading-skeleton" :class="`loading-skeleton--${skeleton}`" role="status" aria-live="polite" aria-busy="true">
     <span class="sr-only">Загружаем данные</span>
-    <div class="skeleton-layout" aria-hidden="true">
+    <div class="skeleton-layout" :style="{ visibility: showSkeleton ? 'visible' : 'hidden' }" aria-hidden="true">
       <template v-if="skeleton === 'dashboard'">
         <div class="skeleton-stats">
           <div v-for="n in 4" :key="n" class="skeleton-card"><span class="skeleton-block skeleton-label" /><span class="skeleton-block skeleton-number" /></div>
@@ -62,7 +70,7 @@ defineEmits<{ retry: [] }>();
 <style scoped>
 .loading-skeleton, .skeleton-layout { width: 100%; min-width: 0; }
 .skeleton-layout { display: grid; gap: 20px; }
-.skeleton-block { display: block; border-radius: 5px; background: var(--color-border); animation: skeleton-pulse 1.6s ease-in-out infinite; flex-shrink: 0; }
+.skeleton-block { display: block; border-radius: 5px; background: var(--color-border); opacity: .65; flex-shrink: 0; }
 .skeleton-label { width: 42%; height: 14px; }
 .skeleton-detail { width: 65%; height: 13px; }
 .skeleton-value { width: 12%; height: 13px; margin-left: auto; }
@@ -113,7 +121,6 @@ defineEmits<{ retry: [] }>();
 .skeleton-rating { display: flex; gap: 8px; }
 .skeleton-rating span { width: 40px; height: 40px; }
 .skeleton-textarea { height: 110px; width: 100%; }
-@keyframes skeleton-pulse { 0%,100% { opacity: .4; } 50% { opacity: .85; } }
 @media (prefers-reduced-motion: reduce) { .skeleton-block { animation: none; opacity: .6; } }
 @media (max-width: 768px) { .skeleton-criterion { flex-direction: column; align-items: flex-start; } .skeleton-criterion .skeleton-detail { width: 70%; } }
 @media (max-width: 640px) {

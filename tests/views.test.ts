@@ -624,3 +624,37 @@ it("selects a teacher before loading their reviews", async () => {
   expect(params.get("TeacherId")).toBe("t1");
   expect(params.has("DisciplineId")).toBe(false);
 });
+
+it("keeps the directory heading mounted when switching tabs and choosing a review target", async () => {
+  const view = await open("/teachers");
+  const header = view.get(".page-header").element;
+  await router.push("/teachers?tab=ratings");
+  await flushPromises();
+  expect(view.get(".page-header").element).toBe(header);
+  await router.push("/teachers?tab=feedback&targetId=t1");
+  await flushPromises();
+  expect(view.get(".page-header").element).toBe(header);
+  expect(view.find(".review-card").exists()).toBe(true);
+});
+
+it("restores catalog rows immediately when returning to a tab with a slow request", async () => {
+  const view = await open("/teachers");
+  const original = view.get("tbody").text();
+  await router.push("/teachers?tab=ratings");
+  await flushPromises();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const fetch = vi.mocked(globalThis.fetch);
+  const previous = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (input, init) => {
+    if (new URL(String(input)).pathname === "/api/Teachers") await gate;
+    return previous(input, init);
+  });
+  await router.push("/teachers");
+  await flushPromises();
+  expect(view.get("tbody").text()).toBe(original);
+  expect(view.find(".table-state[role=status]").exists()).toBe(false);
+  expect(view.find(".loading-skeleton").exists()).toBe(false);
+  release();
+  await flushPromises();
+});

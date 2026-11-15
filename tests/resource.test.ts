@@ -130,3 +130,47 @@ it("clears the refresh indicator on unmount even when a loader ignores cancellat
   await pending;
   expect(backgroundLoads.value).toBe(initial);
 });
+
+it("restores a successful read on remount while revalidating in the background", async () => {
+  const { installSession } = await import("../src/store/auth");
+  const { session } = await import("./fixtures");
+  installSession(session, true);
+  let resource!: ReturnType<typeof useResource<string>>;
+  let finish!: (value: string) => void;
+  const load = vi.fn().mockResolvedValueOnce("saved").mockImplementationOnce(() => new Promise<string>(resolve => { finish = resolve; }));
+  const component = {
+    setup() { resource = useResource<string>(load, [], () => "remount-test"); },
+    template: "<div />",
+  };
+  const first = mount(component);
+  await flushPromises();
+  first.unmount();
+  const second = mount(component);
+  expect(resource.data.value).toBe("saved");
+  expect(resource.loading.value).toBe(false);
+  expect(resource.refreshing.value).toBe(true);
+  finish("fresh");
+  await flushPromises();
+  expect(resource.data.value).toBe("fresh");
+  second.unmount();
+});
+
+it("never restores cached data from a previous account", async () => {
+  const { installSession } = await import("../src/store/auth");
+  const { session } = await import("./fixtures");
+  installSession({ ...session, userId: "cache-first" }, true);
+  let resource!: ReturnType<typeof useResource<string>>;
+  const component = {
+    setup() { resource = useResource<string>(() => Promise.resolve("private"), [], () => "account-cache-test"); },
+    template: "<div />",
+  };
+  const first = mount(component);
+  await flushPromises();
+  first.unmount();
+  installSession({ ...session, userId: "cache-second" }, true);
+  const second = mount(component);
+  expect(resource.data.value).toBeUndefined();
+  expect(resource.loading.value).toBe(true);
+  await flushPromises();
+  second.unmount();
+});

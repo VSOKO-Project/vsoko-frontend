@@ -27,7 +27,7 @@ const { data, loading, error, refresh } = useResource(async (signal) => {
     allPages(page => getFeedbacks({ Page: page, PageSize: 100 }, signal)),
   ]);
   return { periods, workloads, feedbacks };
-});
+}, [], () => "student-workloads");
 const open = computed(() => data.value?.periods.filter(p => p.isFeedbackOpen) || []);
 const workloads = computed(() => data.value?.workloads.filter(w => open.value.some(p => p.id === w.period?.id)) || []);
 function feedbackId(id: string) { return data.value?.feedbacks.find(f => f.workload.id === id)?.id; }

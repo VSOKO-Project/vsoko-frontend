@@ -14,7 +14,7 @@ const downloadingId = ref("");
 let active = true;
 onUnmounted(() => { active = false; });
 const page = ref(1);
-const history = useResource((signal) => getReportHistory(page.value, signal), [page]);
+const history = useResource((signal) => getReportHistory(page.value, signal), [page], () => `report-history:${page.value}`);
 watch(periodParams, () => { action.error.value = ""; action.success.value = ""; });
 async function generate() {
   await action.run(async () => {

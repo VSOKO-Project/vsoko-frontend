@@ -3,9 +3,14 @@ import { auth } from "../store/auth";
 import { getApiErrorMessage } from "../api/errors";
 export const backgroundLoads = ref(0);
 export const refreshNotice = ref("");
+// Cache successful reads only, bounded and isolated to the current account.
+// Revisited screens render immediately and revalidate in the background.
+const snapshots = new Map<string, unknown>();
+watch(() => auth.version, () => { snapshots.clear(); refreshNotice.value = ""; }, { flush: "sync" });
 export function useResource<T>(
   load: (signal: AbortSignal) => Promise<T>,
   sources: WatchSource[] = [],
+  cacheKey?: () => string,
 ) {
   const data = shallowRef<T>();
   const loading = ref(false);
@@ -17,6 +22,10 @@ export function useResource<T>(
     const current = new AbortController();
     controller = current;
     if (reset) data.value = undefined;
+    const key = auth.session ? cacheKey?.() : undefined;
+    const version = auth.version;
+    if (key && data.value === undefined && snapshots.has(key))
+      data.value = snapshots.get(key) as T;
     const background = data.value !== undefined;
     loading.value = !background;
     refreshing.value = background;
@@ -33,7 +42,14 @@ export function useResource<T>(
     }
     try {
       const result = await load(current.signal);
-      if (!current.signal.aborted) data.value = result;
+      if (!current.signal.aborted && version === auth.version) {
+        data.value = result;
+        if (key) {
+          snapshots.delete(key);
+          snapshots.set(key, result);
+          if (snapshots.size > 80) snapshots.delete(snapshots.keys().next().value!);
+        }
+      }
     } catch (cause) {
       if (!current.signal.aborted) {
         if (background)

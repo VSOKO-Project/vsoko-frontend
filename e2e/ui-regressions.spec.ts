@@ -82,3 +82,25 @@ test("dialog locks background scrolling and restores it after closing", async ({
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
 });
+
+test("switching directory tabs retains the heading and restores rows during a slow request", async ({ page, app }) => {
+  await app.signIn(true);
+  await page.goto("/teachers");
+  await expect(page.getByRole("button", { name: /^Редактировать:/ }).first()).toBeVisible();
+  await page.locator(".page-header").evaluate(el => el.setAttribute("data-retained", "yes"));
+  const tabs = page.getByRole("navigation", { name: "Разделы: Преподаватели" });
+  await tabs.getByRole("link", { name: "Оценки", exact: true }).click();
+  await expect(page.locator(".rating-name-link").first()).toBeVisible();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/api/Teachers?**", async route => { await gate; await route.fallback(); });
+  try {
+    await tabs.getByRole("link", { name: "Список", exact: true }).click();
+    await expect(page.locator(".page-header[data-retained=yes]")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: /^Редактировать:/ }).first()).toBeVisible();
+    await expect(page.locator(".table-state[role=status]")).toHaveCount(0);
+    await expect(page.locator(".loading-skeleton")).toHaveCount(0);
+  } finally {
+    release();
+  }
+});

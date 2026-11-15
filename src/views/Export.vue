@@ -7,7 +7,7 @@ import { saveBlob } from "../utils/download";
 import LoadState from "../components/LoadState.vue";
 
 const groupIds = ref<string[]>([]);
-const groups = useResource((signal) => getImportGroups(signal));
+const groups = useResource((signal) => getImportGroups(signal), [], () => "import-groups");
 const downloads = useAction();
 
 async function download() {

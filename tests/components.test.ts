@@ -167,3 +167,45 @@ it("leaves gaps in the grade trend when a semester has no grades", async () => {
   expect(chart.text()).toContain("—");
   chart.unmount();
 });
+
+it("keeps the same table and column headings across loading, error, empty and data states", async () => {
+  const { default: DataTable } = await import("../src/components/DataTable.vue");
+  const table = mount(DataTable, {
+    props: { columns: ["Название", "Действия"], loading: true },
+    slots: { default: "<tr><td>Математика</td><td>Открыть</td></tr>" },
+  });
+  const head = table.get("thead").element;
+  const element = table.get("table").element;
+  expect(table.get('[role="status"]').text()).toContain("Загружаем");
+  await table.setProps({ loading: false, error: "Нет связи" });
+  expect(table.get('[role="alert"]').text()).toContain("Нет связи");
+  await table.get("button").trigger("click");
+  expect(table.emitted("retry")).toHaveLength(1);
+  await table.setProps({ error: "", empty: true });
+  expect(table.text()).toContain("Здесь пока нет данных");
+  await table.setProps({ empty: false });
+  expect(table.get("thead").element).toBe(head);
+  expect(table.get("table").element).toBe(element);
+  expect(table.get("tbody").text()).toContain("Математика");
+  table.unmount();
+});
+
+it("delays skeleton visibility and cancels its timer after a fast response", async () => {
+  const { vi } = await import("vitest");
+  vi.useFakeTimers();
+  const state = mount(LoadState, { props: { loading: true } });
+  try {
+    expect(state.get(".skeleton-layout").attributes("style")).toContain("hidden");
+    await state.setProps({ loading: false });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(state.find(".loading-skeleton").exists()).toBe(false);
+    await state.setProps({ loading: true });
+    await vi.advanceTimersByTimeAsync(159);
+    expect(state.get(".skeleton-layout").attributes("style")).toContain("hidden");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(state.get(".skeleton-layout").attributes("style")).toContain("visible");
+  } finally {
+    state.unmount();
+    vi.useRealTimers();
+  }
+});

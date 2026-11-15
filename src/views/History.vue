@@ -23,6 +23,7 @@ const { data, loading, error, refresh } = useResource(
       Sort: "Newest",
     }),
   [page],
+  () => `student-feedback:${page.value}`,
 );
 const criteria = useResource(() => getCriteria());
 const selected = ref<FeedbackDto>();

@@ -6,7 +6,7 @@ import { periodValue } from "../store/period";
 import LoadState from "./LoadState.vue";
 import AppSelect from "./AppSelect.vue";
 const emit = defineEmits<{ change: [value: string] }>();
-const { data, loading, error, refresh } = useResource((signal) => getPeriods(signal));
+const { data, loading, error, refresh } = useResource((signal) => getPeriods(signal), [], () => "periods");
 const options = computed(() => [
   { value: "", label: "Все периоды" },
   ...(data.value || []).map((p) => ({

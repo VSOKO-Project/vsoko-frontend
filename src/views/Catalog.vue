@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DataTable from "../components/DataTable.vue";
 import PageHeader from "../components/PageHeader.vue";
 import ActionIcon from "../components/ActionIcon.vue";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
@@ -53,7 +54,7 @@ const { data, loading, error, refresh } = useResource(async () => {
     props.kind === "teachers" ? getTeachers : getDisciplines
   )({ Page: page.value, PageSize: DEFAULT_PAGE_SIZE, Query: query.value });
   return { items: result.items as Row[], totalPages: result.totalPages };
-}, [page, query]);
+}, [page, query], () => JSON.stringify(["catalog", props.kind, page.value, query.value]));
 watch(query, () => (page.value = 1));
 const form = reactive({
   id: "",
@@ -178,22 +179,8 @@ async function merge() {
   >
     {{ action.error.value }}
   </p>
-  <LoadState
-    skeleton="table"
-    :loading="loading"
-    :error="error"
-    :empty="!data?.items.length"
-    @retry="refresh"
-    ><div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Название</th>
-            <th v-if="kind === 'criteria'">Тип</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
+  <DataTable :widths="kind === 'criteria' ? ['50%', '25%', '25%'] : ['70%', '30%']" :columns="kind === 'criteria' ? ['Название', 'Тип', 'Действия'] : ['Название', 'Действия']"
+    :loading="loading" :error="error" :empty="!data?.items.length" @retry="refresh">
           <tr v-for="row in data?.items" :key="row.id">
             <td>{{ row.fullName || row.name }}</td>
             <td v-if="kind === 'criteria'">
@@ -225,11 +212,9 @@ async function merge() {
               </div>
             </td>
           </tr>
-        </tbody>
-      </table>
-    </div>
-    <Pagination v-model:page="page" :total="data?.totalPages || 0" /></LoadState
-  ><Modal
+
+  </DataTable>
+  <Pagination v-model:page="page" :total="data?.totalPages || 0" /><Modal
     :open="open"
     :title="form.id ? 'Редактировать запись' : 'Новый критерий'"
     @close="open = false"

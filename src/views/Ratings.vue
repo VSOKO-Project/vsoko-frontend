@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DataTable from "../components/DataTable.vue";
 import type { FeedbackReportDto } from "../types";
 import FeedbackReport from "../components/FeedbackReport.vue";
 import { feedbackCountText, feedbackLocation } from "../utils/feedback-links";
@@ -31,6 +32,7 @@ const { data, loading, error, refresh } = useResource(
       ...periodParams.value,
     }),
   [page, query, periodValue],
+  () => JSON.stringify(["ratings", props.kind, page.value, query.value, periodValue.value]),
 );
 async function show(id: string) {
   selected.value = id;
@@ -53,21 +55,8 @@ async function show(id: string) {
       :placeholder="teacher ? 'Найти преподавателя…' : 'Найти дисциплину…'"
     /><PeriodSelect />
   </div>
-  <LoadState
-    :loading="loading"
-    :error="error"
-    :empty="!data?.items.length"
-    @retry="refresh"
-    ><div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>{{ teacher ? "Преподаватель" : "Дисциплина" }}</th>
-            <th>Средний балл</th>
-            <th>Сводка</th>
-          </tr>
-        </thead>
-        <tbody>
+  <DataTable  :widths="['50%', '30%', '20%']" :columns="[teacher ? 'Преподаватель' : 'Дисциплина', 'Средний балл', 'Сводка']"
+    :loading="loading" :error="error" :empty="!data?.items.length" @retry="refresh">
           <tr v-for="item in data?.items" :key="item.id">
             <td><RouterLink class="rating-name-link" :to="feedbackLocation(kind, item.id, periodValue)">{{ item.name }}</RouterLink></td>
             <td><div class="rating-meta">
@@ -98,11 +87,9 @@ async function show(id: string) {
               </button>
             </td>
           </tr>
-        </tbody>
-      </table>
-    </div>
-    <Pagination v-model:page="page" :total="data?.totalPages || 0" /></LoadState
-  ><Modal :open="!!selected" title="Сводка ИИ" @close="selected = ''"
+
+  </DataTable>
+  <Pagination v-model:page="page" :total="data?.totalPages || 0" /><Modal :open="!!selected" title="Сводка ИИ" @close="selected = ''"
     ><LoadState
       skeleton="text"
       :loading="action.pending.value"

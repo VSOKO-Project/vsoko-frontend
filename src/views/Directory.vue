@@ -18,5 +18,5 @@ const subtitle = computed(() => ({ list: 'Справочник записей. �
   </nav>
   <Catalog v-if="tab === 'list'" :kind="kind" embedded />
   <Ratings v-else-if="tab === 'ratings'" :kind="kind" />
-  <FeedbackBrowser v-else :kind="kind === 'teachers' ? 'teacher' : 'discipline'" />
+  <FeedbackBrowser v-else :key="String(route.query.targetId || '')" :kind="kind === 'teachers' ? 'teacher' : 'discipline'" />
 </template>

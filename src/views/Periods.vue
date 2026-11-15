@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import DataTable from "../components/DataTable.vue";
 import PageHeader from "../components/PageHeader.vue";
 import { getPeriods, setPeriodFeedback } from "../api/periods";
 import { useResource, useAction } from "../composables/resource";
 import type { PeriodDto } from "../types";
 import { confirmAction } from "../composables/confirmation";
-import LoadState from "../components/LoadState.vue";
 const { data, loading, error, refresh } = useResource((signal) =>
-  getPeriods(signal),
+  getPeriods(signal), [], () => "periods",
 );
 const action = useAction();
 async function toggle(period: PeriodDto, event: Event) {
@@ -42,23 +42,8 @@ async function toggle(period: PeriodDto, event: Event) {
   <p v-if="action.success.value" class="notice" role="status">
     {{ action.success.value }}
   </p>
-  <LoadState
-    skeleton="table"
-    :loading="loading"
-    :error="error"
-    :empty="!data?.length"
-    @retry="refresh"
-    ><div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Период</th>
-            <th>Нагрузок</th>
-            <th>Отзывов</th>
-            <th>Сбор отзывов</th>
-          </tr>
-        </thead>
-        <tbody>
+  <DataTable  :widths="['40%', '15%', '15%', '30%']" :columns="['Период', 'Нагрузок', 'Отзывов', 'Сбор отзывов']"
+    :loading="loading" :error="error" :empty="!data?.length" @retry="refresh">
           <tr v-for="p in data" :key="p.id">
             <td>{{ p.title }}</td>
             <td>{{ p.workloadCount }}</td>
@@ -77,8 +62,6 @@ async function toggle(period: PeriodDto, event: Event) {
               >
             </td>
           </tr>
-        </tbody>
-      </table>
-    </div></LoadState
-  >
+
+  </DataTable>
 </template>

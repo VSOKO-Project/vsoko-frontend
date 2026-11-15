@@ -91,7 +91,7 @@ watch(
 );
 // A period filter should refresh data without destroying the page and its controls.
 const pageKey = computed(() => JSON.stringify([
-  route.path, route.query.tab, route.query.targetId, route.query.workloadId,
+  route.path, route.query.workloadId,
   route.query.edit, route.query.filter, auth.version,
 ]));
 </script>

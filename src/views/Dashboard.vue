@@ -10,7 +10,7 @@ import LoadState from "../components/LoadState.vue";
 import ColumnChart from "../components/ColumnChart.vue";
 import CoverageChart from "../components/CoverageChart.vue";
 import GradeTrend from "../components/GradeTrend.vue";
-const { data, loading, error, refresh } = useResource(signal => getDashboard(periodParams.value, signal), [periodValue]);
+const { data, loading, error, refresh } = useResource(signal => getDashboard(periodParams.value, signal), [periodValue], () => `dashboard:${periodValue.value}`);
 const stats = computed(() => [
   { label: "Заполнение отзывов", value: data.value ? `${data.value.coverage.submittedCount.toLocaleString('ru-RU')} / ${data.value.coverage.possibleCount.toLocaleString('ru-RU')}` : '—', detail: data.value?.coverage.completionPercent != null ? `${data.value.coverage.completionPercent.toLocaleString('ru-RU')}% заполнено` : 'Нет доступной нагрузки' },
   { label: "Средняя оценка дисциплин", value: data.value?.averageGrade?.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) || '—', detail: feedbackCountText(data.value?.ratedFeedbackCount || 0) },

@@ -625,14 +625,22 @@ for (const [path, skeleton] of [
   const gate = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/api/**', async route => { await gate; await route.fallback(); });
   await page.goto(path!);
-  const placeholder = page.locator(`.loading-skeleton--${skeleton}`).first();
+  const placeholder = skeleton === 'table'
+    ? page.locator('.data-table').first()
+    : page.locator(`.loading-skeleton--${skeleton}`).first();
   await expect(placeholder).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  expect(await placeholder.locator('.skeleton-block').first().evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  if (skeleton === 'table') {
+    await expect(placeholder.locator('thead')).toBeVisible();
+    await placeholder.locator('thead').evaluate(el => el.setAttribute('data-retained', 'yes'));
+  } else {
+    expect(await placeholder.locator('.skeleton-block').first().evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  }
   await page.screenshot({ path: testInfo.outputPath('loading.png'), fullPage: true });
   release();
   await expect(page.locator('.loading-skeleton')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
+  if (skeleton === 'table') await expect(page.locator('.data-table thead[data-retained=yes]')).toHaveCount(1);
 });
 
 test('summary modal uses text loading state', async ({ page, app }, testInfo) => {

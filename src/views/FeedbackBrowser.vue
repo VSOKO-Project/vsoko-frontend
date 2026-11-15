@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DataTable from "../components/DataTable.vue";
 import ActionIcon from "../components/ActionIcon.vue";
 import { useRoute, useRouter } from "vue-router";
 import { periodParams, periodValue } from "../store/period";
@@ -30,13 +31,13 @@ const record = useResource(async signal => {
   if (!targetId) return null;
   const item = await (kind.value === 'teacher' ? getTeacherById : getDisciplineById)(targetId, signal);
   return { item, id: item.id, name: 'fullName' in item && typeof item.fullName === 'string' ? item.fullName : item.name, kind: kind.value };
-});
+}, [], () => targetId ? `feedback-record:${kind.value}:${targetId}` : "");
 function changePeriod(value: string) { void router.replace({ path: route.path, query: { ...route.query, period: value } }); }
 const search = ref("");
 const query = ref("");
 const directoryPage = ref(1);
 const target = ref<{ id: string; name: string; kind: Kind }>();
-watch(record.data, value => { if (value) target.value = value; });
+watch(record.data, value => { if (value) target.value = value; }, { immediate: true });
 const page = ref(1);
 const sort = ref<FeedbackSort>("Newest");
 watch(search, (value, _old, cleanup) => {
@@ -63,7 +64,7 @@ const directory = useResource(async (signal) => {
     };
   }
   return getDisciplines(params, signal);
-}, [kind, query, directoryPage, periodValue]);
+}, [kind, query, directoryPage, periodValue], () => targetId ? "" : JSON.stringify(["feedback-directory", kind.value, query.value, directoryPage.value, periodValue.value]));
 const feedback = useResource<PagedResultDto<FeedbackDto>>(
   (signal) =>
     target.value
@@ -86,7 +87,8 @@ const feedback = useResource<PagedResultDto<FeedbackDto>>(
           totalPages: 0,
           totalCount: 0,
         }),
-  [target, page, sort, periodValue],
+  [() => target.value?.id, () => target.value?.kind, page, sort, periodValue],
+  () => target.value ? JSON.stringify(["feedback", target.value.kind, target.value.id, page.value, sort.value, periodValue.value]) : "",
 );
 watch([sort, periodValue], () => {
   page.value = 1;
@@ -180,24 +182,16 @@ const sortOptions = [
           kind === 'teacher' ? 'Найти преподавателя…' : 'Найти дисциплину…'
         "
       /><PeriodSelect @change="changePeriod" /></div>
-      <LoadState
-        skeleton="table"
-        :loading="directory.loading.value"
-        :error="directory.error.value"
-        :empty="!directory.data.value?.items.length"
-        @retry="directory.refresh"
-        ><div class="table-wrapper feedback-targets">
-          <table>
-            <thead><tr><th>{{ kind === 'teacher' ? 'Преподаватель' : 'Дисциплина' }}</th></tr></thead>
-            <tbody><tr v-for="item in directory.data.value?.items" :key="item.id"><td>
+      <DataTable :columns="[kind === 'teacher' ? 'Преподаватель' : 'Дисциплина']"
+        :loading="directory.loading.value" :error="directory.error.value"
+        :empty="!directory.data.value?.items.length" @retry="directory.refresh"><tr v-for="item in directory.data.value?.items" :key="item.id"><td>
               <button class="text-link feedback-target" @click="choose(item)">{{ item.name }}</button>
-            </td></tr></tbody>
-          </table>
-        </div>
-        <Pagination
+            </td></tr>
+      </DataTable>
+      <Pagination
           v-model:page="directoryPage"
           :total="directory.data.value?.totalPages || 0"
-      /></LoadState></template>
+      /></template>
   <template v-else
     ><button class="text-link back-link" @click="changeTarget">{{ kind === 'teacher' ? 'К списку преподавателей' : 'К списку дисциплин' }}</button>
     <section class="feedback-selection">

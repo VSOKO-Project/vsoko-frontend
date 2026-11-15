@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from "vue";
+import { computed, ref, watch } from "vue";
+import { useMobileNavigation } from "./composables/mobile-navigation";
 import { useRoute } from "vue-router";
 import { router } from "./router";
 import { auth, homePath } from "./store/auth";
@@ -10,11 +11,11 @@ import ConfirmDialog from "./components/ConfirmDialog.vue";
 import Brand from "./components/Brand.vue";
 import ThemeSelect from "./components/ThemeSelect.vue";
 const route = useRoute();
-const open = ref(false);
+const { open, mobile, sidebar } = useMobileNavigation();
 const loggingOut = ref(false);
 const showRefresh = ref(false);
-watch(backgroundLoads, (count, _old, cleanup) => {
-  if (!count) {
+watch(() => backgroundLoads.value > 0, (active, _old, cleanup) => {
+  if (!active) {
     showRefresh.value = false;
     return;
   }
@@ -36,20 +37,18 @@ const standalone = computed(
 const links = computed(() =>
   isAdmin.value
     ? [
-        ["/dashboard", "Обзор результатов"],
-        ["/teachers/rating", "Оценки преподавателей"],
-        ["/disciplines/rating", "Оценки дисциплин"],
-        ["/feedback", "Отзывы"],
+        ["/dashboard", "Сводка"],
         ["/teachers", "Преподаватели"],
         ["/disciplines", "Дисциплины"],
         ["/criteria", "Критерии"],
-        ["/summaries", "Сводки ИИ"],
+        ["/summaries", "Анализ отзывов"],
         ["/reports", "Отчёты"],
         ["/periods", "Периоды"],
         ["/import", "Импорт"],
+        ["/export", "Экспорт"],
       ]
     : [
-        ["/workloads", "Оценить занятия"],
+        ["/workloads", "Оценка обучения"],
         ["/my-feedback", "Мои оценки"],
       ],
 );
@@ -57,7 +56,6 @@ watch(
   () => route.fullPath,
   () => {
     open.value = false;
-    document.title = `VSOKO — ${links.value.find((l) => l[0] === route.path)?.[1] || "Качество образования"}`;
   },
 );
 watch(
@@ -84,23 +82,42 @@ async function exit() {
     loggingOut.value = false;
   }
 }
-function escape(event: KeyboardEvent) {
-  if (event.key === "Escape") open.value = false;
-}
-onMounted(() => window.addEventListener("keydown", escape));
-onUnmounted(() => window.removeEventListener("keydown", escape));
+watch(
+  () => route.path,
+  () => {
+    document.title = `VSOKO — ${links.value.find((link) => link[0] === route.path)?.[1] || "Качество образования"}`;
+  },
+  { immediate: true },
+);
+// A period filter should refresh data without destroying the page and its controls.
+const pageKey = computed(() => JSON.stringify([
+  route.path, route.query.tab, route.query.targetId, route.query.workloadId,
+  route.query.edit, route.query.filter, auth.version,
+]));
 </script>
 <template>
   <RouterView v-if="standalone" :key="route.fullPath" />
   <div v-else class="app-layout">
     <a class="skip-link" href="#main-content">К содержимому</a
     ><button
-      v-if="open"
+      v-if="mobile && open"
+      tabindex="-1"
       class="sidebar-overlay"
-      aria-label="Закрыть меню"
+      aria-label="Закрыть меню по фону"
       @click="open = false"
     />
-    <aside class="sidebar" :class="{ 'sidebar--open': open }">
+    <aside
+      id="app-navigation"
+      :ref="(element) => sidebar = element as HTMLElement"
+      class="sidebar"
+      :class="{ 'sidebar--open': open }"
+      :inert="mobile && !open"
+      :aria-hidden="mobile && !open ? true : undefined"
+      :role="mobile && open ? 'dialog' : undefined"
+      :aria-modal="mobile && open ? true : undefined"
+      aria-label="Меню навигации"
+    >
+      <button v-if="mobile" type="button" class="sidebar__close icon-button" aria-label="Закрыть меню" @click="open = false">×</button>
       <RouterLink class="sidebar__logo" :to="homePath()"><Brand /></RouterLink>
       <nav class="sidebar__nav" aria-label="Основная навигация">
         <RouterLink
@@ -108,13 +125,14 @@ onUnmounted(() => window.removeEventListener("keydown", escape));
           :key="link[0]"
           :to="link[0]!"
           class="sidebar__link"
+          :class="{ 'sidebar__link--active': link[0] === route.path }"
           exact-active-class="sidebar__link--active"
           >{{ link[1] }}</RouterLink
         >
       </nav>
       <div class="sidebar__settings"><ThemeSelect /></div>
     </aside>
-    <div class="app-layout__main">
+    <div class="app-layout__main" :inert="mobile && open">
       <header class="header">
         <div
           v-if="showRefresh"
@@ -125,6 +143,7 @@ onUnmounted(() => window.removeEventListener("keydown", escape));
         <div class="header__left">
           <button
             class="header__menu-btn"
+            aria-controls="app-navigation"
             :aria-expanded="open"
             aria-label="Открыть меню"
             @click="open = !open"
@@ -172,7 +191,7 @@ onUnmounted(() => window.removeEventListener("keydown", escape));
             Закрыть
           </button>
         </div>
-        <RouterView :key="`${route.fullPath}:${auth.version}`" />
+        <RouterView :key="pageKey" />
       </main>
     </div>
   </div>

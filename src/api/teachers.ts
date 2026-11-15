@@ -15,10 +15,11 @@ interface PaginationParams {
 
 export async function getTeachers(
   params: PaginationParams & PeriodFilterParams,
+  signal?: AbortSignal,
 ): Promise<PagedResultDto<TeacherDto>> {
   const response = await api.get<ApiSuccessResult<PagedResultDto<TeacherDto>>>(
     "/Teachers",
-    { params },
+    { params, signal },
   );
   return response.data.data;
 }
@@ -60,5 +61,10 @@ export async function mergeTeachers(
     `/Teachers/${sourceId}/merge`,
     { targetId },
   );
+  return response.data.data;
+}
+
+export async function getTeacherById(id: string, signal?: AbortSignal): Promise<TeacherDto> {
+  const response = await api.get<ApiSuccessResult<TeacherDto>>(`/Teachers/${encodeURIComponent(id)}`, { signal });
   return response.data.data;
 }

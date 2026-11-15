@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { FeedbackReportDto } from "../types";
+import FeedbackReport from "../components/FeedbackReport.vue";
+import { feedbackCountText, feedbackLocation } from "../utils/feedback-links";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
 import { computed, ref, watch } from "vue";
 import { getTeachersRating } from "../api/teachers";
@@ -15,9 +18,10 @@ const teacher = computed(() => props.kind === "teachers");
 const page = ref(1);
 const query = ref("");
 const selected = ref("");
-const summary = ref("");
+const summary = ref<FeedbackReportDto>();
 const action = useAction();
 watch([query, periodValue], () => (page.value = 1));
+watch([periodValue, () => props.kind], () => { selected.value = ""; summary.value = undefined; });
 const { data, loading, error, refresh } = useResource(
   () =>
     (teacher.value ? getTeachersRating : getDisciplinesRating)({
@@ -30,31 +34,23 @@ const { data, loading, error, refresh } = useResource(
 );
 async function show(id: string) {
   selected.value = id;
-  summary.value = "";
-  const current = id;
+  summary.value = undefined;
+  const current = `${id}:${periodValue.value}:${props.kind}`;
   await action.run(async () => {
     const text = await (
       teacher.value ? getTeacherSummary : getDisciplineSummary
     )(id, periodParams.value);
-    if (selected.value === current) summary.value = text;
+    if (`${selected.value}:${periodValue.value}:${props.kind}` === current) summary.value = text;
   });
 }
 </script>
 <template>
-  <div class="page-header">
-    <h1 class="page-title">
-      {{ teacher ? "Оценки преподавателей" : "Оценки дисциплин" }}
-    </h1>
-    <p class="page-subtitle">
-      Средние оценки по всем критериям. Выберите запись, чтобы прочитать сводку.
-    </p>
-  </div>
   <div class="toolbar">
     <input
       v-model="query"
       type="search"
       aria-label="Поиск"
-      placeholder="Поиск…"
+      :placeholder="teacher ? 'Найти преподавателя…' : 'Найти дисциплину…'"
     /><PeriodSelect />
   </div>
   <LoadState
@@ -73,9 +69,9 @@ async function show(id: string) {
         </thead>
         <tbody>
           <tr v-for="item in data?.items" :key="item.id">
-            <td>{{ item.name }}</td>
-            <td>
-              <span
+            <td><RouterLink class="rating-name-link" :to="feedbackLocation(kind, item.id, periodValue)">{{ item.name }}</RouterLink></td>
+            <td><div class="rating-meta">
+              <span v-if="item.grade > 0"
                 class="badge"
                 :class="
                   item.grade >= 4
@@ -90,7 +86,7 @@ async function show(id: string) {
                     maximumFractionDigits: 1,
                   })
                 }}</span
-              >
+              ><span v-else class="muted">—</span><small class="muted">{{ feedbackCountText(item.feedbackCount) }}</small></div>
             </td>
             <td>
               <button
@@ -108,14 +104,12 @@ async function show(id: string) {
     <Pagination v-model:page="page" :total="data?.totalPages || 0" /></LoadState
   ><Modal :open="!!selected" title="Сводка ИИ" @close="selected = ''"
     ><LoadState
+      skeleton="text"
       :loading="action.pending.value"
       :error="action.error.value"
       @retry="show(selected)"
-      ><p class="summary-text">{{ summary || "Сводка недоступна" }}</p>
-      <p class="ai-note">
-        Сводка может содержать неточности. Проверьте выводы по исходным
-        комментариям.
-      </p></LoadState
+      ><FeedbackReport v-if="summary" :report="summary" @refresh="show(selected)" />
+      <p v-else class="muted">Сводка недоступна</p></LoadState
     ></Modal
   >
 </template>

@@ -106,6 +106,9 @@ textarea {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 24px;
 }
+.workloads-grid > .card + .card {
+  margin-top: 0;
+}
 .workload-card {
   align-items: flex-start;
 }
@@ -147,6 +150,7 @@ textarea {
 }
 .history-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 .history-list .card + .card {
@@ -158,6 +162,12 @@ textarea {
   gap: 16px;
   align-items: flex-start;
   margin-bottom: 20px;
+}
+.history-heading > div {
+  min-width: 0;
+}
+.history-heading h2 {
+  overflow-wrap: anywhere;
 }
 .history-heading .badge {
   flex-shrink: 0;
@@ -188,30 +198,6 @@ blockquote {
   margin-top: 28px;
   font-size: 12px;
 }
-.vue-modal {
-  margin: auto;
-  padding: 28px;
-  width: min(640px, calc(100% - 32px));
-  max-height: 85dvh;
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  overflow: auto;
-}
-.vue-modal::backdrop {
-  background: #0c202980;
-}
-.modal__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 24px;
-}
-.modal__header h2 {
-  font-size: 24px;
-}
 .icon-button {
   background: none;
   border: 0;
@@ -219,9 +205,6 @@ blockquote {
   color: var(--color-text-secondary);
   cursor: pointer;
   padding: 4px 10px;
-}
-.vue-modal .btn {
-  margin-top: 16px;
 }
 .dashboard-charts {
   display: grid;
@@ -348,9 +331,6 @@ details {
 summary {
   cursor: pointer;
   margin-bottom: 16px;
-}
-.sidebar-overlay {
-  border: 0;
 }
 .workload-card .badge {
   margin-bottom: 12px;

@@ -71,10 +71,19 @@ test("dashboard preview with representative sample data", async ({
   await page.route("**/api/Feedback?**", (route) =>
     route.fulfill({ json: { data: { ...paged([]), totalCount: 4103 } } }),
   );
+  await page.route('**/api/Dashboard*', async route => {
+    const { dashboard } = await import('../tests/fixtures');
+    await route.fulfill({ json: { data: { ...dashboard, feedbackCount: 1284, teacherCount: 32, coverage: { submittedCount: 1284, possibleCount: 2000, completionPercent: 64.2 }, timeline: [
+      { periodId: 'p-2', title: '2024/25, весенний семестр', averageGrade: 3.6, feedbackCount: 812, disciplineCount: 10, coverage: { submittedCount: 5, possibleCount: 20, completionPercent: 25 } },
+      { periodId: 'p-1', title: '2025/26, осенний семестр', averageGrade: 3.8, feedbackCount: 947, disciplineCount: 10, coverage: { submittedCount: 5, possibleCount: 20, completionPercent: 25 } },
+      { periodId: 'p0', title: '2025/26, весенний семестр', averageGrade: 4, feedbackCount: 1060, disciplineCount: 10, coverage: { submittedCount: 5, possibleCount: 20, completionPercent: 25 } },
+      { periodId: 'p1', title: '2026/27, осенний семестр', averageGrade: 4.1, feedbackCount: 1284, disciplineCount: 10, coverage: { submittedCount: 5, possibleCount: 20, completionPercent: 25 } },
+    ] } } });
+  });
   await page.goto("/dashboard");
   await page.getByRole("combobox", { name: "Период" }).click();
   await page.getByRole("option", { name: "Осень 2026 · сбор открыт" }).click();
-  await expect(page.locator(".stat-card__value").first()).toHaveText(/1\s284/);
+  await expect(page.locator(".stat-card__value").first()).toContainText(/1\s284/);
   await page.screenshot({
     path: testInfo.outputPath("dashboard-preview.png"),
     fullPage: true,

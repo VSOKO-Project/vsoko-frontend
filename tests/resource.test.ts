@@ -108,3 +108,25 @@ it("discards private data immediately when the account changes", async () => {
   expect(resource.data.value).toBe("second account");
   wrapper.unmount();
 });
+
+it("clears the refresh indicator on unmount even when a loader ignores cancellation", async () => {
+  const { backgroundLoads } = await import("../src/composables/resource");
+  const initial = backgroundLoads.value;
+  let finish!: (value: string) => void;
+  const load = vi.fn().mockResolvedValueOnce("first").mockImplementationOnce(
+    () => new Promise<string>(resolve => { finish = resolve; }),
+  );
+  let resource!: ReturnType<typeof useResource<string>>;
+  const wrapper = mount({
+    setup() { resource = useResource<string>(load); },
+    template: "<div />",
+  });
+  await flushPromises();
+  const pending = resource.refresh();
+  expect(backgroundLoads.value).toBe(initial + 1);
+  wrapper.unmount();
+  expect(backgroundLoads.value).toBe(initial);
+  finish("late");
+  await pending;
+  expect(backgroundLoads.value).toBe(initial);
+});

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { getWorkloadById } from "../api/workload";
 import { getCriteria } from "../api/criteria";
 import { createFeedback } from "../api/feedback";
@@ -15,11 +15,11 @@ import { auth } from "../store/auth";
 import Rating from "../components/Rating.vue";
 import LoadState from "../components/LoadState.vue";
 const route = useRoute();
-const router = useRouter();
+const sent = ref(false);
 const workloadId = String(route.query.workloadId || "");
 const key = draftKey(auth.session?.data.userId || null, workloadId);
 const draft = reactive(readDraft(key));
-const draftStatus = ref("");
+const draftStatus = ref(Object.keys(draft.grades).length || draft.comment ? "Восстановили ваш черновик" : "");
 const { data, loading, error, refresh } = useResource(async (signal) => {
   if (!workloadId) throw new Error("Выберите занятие из списка дисциплин.");
   const [workload, criteria] = await Promise.all([
@@ -32,6 +32,7 @@ const action = useAction();
 const valid = computed(() =>
   allCriteriaRated(data.value?.criteria.map((c) => c.id) || [], draft.grades),
 );
+const remaining = computed(() => data.value?.criteria.filter(c => !draft.grades[c.id]).length || 0);
 function save() {
   draftStatus.value = saveDraft(key, draft)
     ? "Черновик сохранён на этом устройстве"
@@ -57,21 +58,29 @@ async function submit() {
     } catch {
       /* Saved on server. */
     }
-    await router.push("/my-feedback");
+    sent.value = true;
   }
 }
 </script>
 <template>
   <RouterLink class="text-link back-link" to="/workloads"
-    >К занятиям</RouterLink
+    >К дисциплинам</RouterLink
   >
+  <section v-if="sent" class="card student-success" role="status">
+    <span class="badge badge--success">Готово</span>
+    <h1 class="page-title">Оценка отправлена</h1>
+    <p>{{ data?.workload.discipline.name }} — спасибо за обратную связь!</p>
+    <p class="muted">Вы можете изменить оценку в истории, пока сбор отзывов открыт.</p>
+    <div class="feedback-actions"><RouterLink class="btn btn--primary" to="/workloads?filter=remaining">К следующей дисциплине</RouterLink><RouterLink class="btn btn--secondary" to="/my-feedback">Мои оценки</RouterLink></div>
+  </section>
+  <template v-else>
   <div class="page-header">
-    <h1 class="page-title">Оценка занятия</h1>
+    <h1 class="page-title">Оценка дисциплины и преподавателя</h1>
     <p class="page-subtitle">
-      Оцените каждый критерий от 1 до 5. Черновик сохраняется на устройстве.
+      Оцените каждый критерий от 1 до 5: от «Совсем не устраивает» до «Полностью устраивает».
     </p>
   </div>
-  <LoadState skeleton="form" :loading="loading" :error="error" @retry="refresh"
+  <LoadState skeleton="feedback" :loading="loading" :error="error" @retry="refresh"
     ><template v-if="data"
       ><div class="card feedback-editor">
         <article class="feedback-context">
@@ -122,6 +131,7 @@ async function submit() {
           <p v-if="action.error.value" role="alert" class="error-text">
             {{ action.error.value }}
           </p>
+          <p v-if="remaining" class="muted" role="status">Осталось оценить критериев: {{ remaining }}</p>
           <div class="feedback-actions">
             <button
               type="submit"
@@ -130,16 +140,11 @@ async function submit() {
             >
               {{
                 action.pending.value ? "Отправляем…" : "Отправить оценку"
-              }}</button><button
-              type="button"
-              class="btn btn--secondary"
-              @click="save"
-            >
-              Сохранить черновик</button
-            ><span role="status" class="draft-status">{{ draftStatus }}</span>
+              }}</button><span role="status" class="draft-status">{{ draftStatus }}</span>
           </div>
         </form>
       </div></template
     ></LoadState
   >
+  </template>
 </template>

@@ -3,6 +3,7 @@ import api from "./client";
 import type {
   ApiSuccessResult,
   ImportReportDto,
+  ImportMode,
   StudentGroupDto,
   TeacherDto,
   Term,
@@ -12,13 +13,17 @@ export interface ImportParams {
   file: File;
   startYear: number;
   term: Term;
+  mode: ImportMode;
+  previewToken?: string;
 }
 
-function toForm({ file, startYear, term }: ImportParams): FormData {
+function toForm({ file, startYear, term, mode, previewToken }: ImportParams): FormData {
   const form = new FormData();
   form.append("file", file);
   form.append("startYear", String(startYear));
   form.append("term", term);
+  form.append("mode", mode);
+  if (previewToken) form.append("previewToken", previewToken);
   return form;
 }
 

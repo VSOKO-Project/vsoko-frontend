@@ -10,19 +10,20 @@ const maximum = computed(() =>
 const ticks = computed(() => [
   ...new Set([0, Math.ceil(maximum.value / 2), maximum.value]),
 ]);
-const column = computed(() => 552 / Math.max(1, props.items.length));
+const width = computed(() => Math.max(320, 88 + props.items.length * 80));
+const column = computed(() => (width.value - 88) / Math.max(1, props.items.length));
 const x = (index: number) => 56 + index * column.value + column.value / 2;
 const y = (value: number) => 196 - (value / maximum.value) * 156;
 </script>
 <template>
   <svg
-    viewBox="0 0 640 250"
+    :viewBox="`0 0 ${width} 250`"
     class="column-chart"
     role="img"
     :aria-label="label"
   >
     <g v-for="tick in ticks" :key="tick">
-      <line x1="48" x2="616" :y1="y(tick)" :y2="y(tick)" class="chart-grid" />
+      <line x1="48" :x2="width - 24" :y1="y(tick)" :y2="y(tick)" class="chart-grid" />
       <text x="36" :y="y(tick) + 4" text-anchor="end" class="chart-tick">
         {{ tick }}
       </text>

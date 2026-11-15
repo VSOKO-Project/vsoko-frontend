@@ -3,8 +3,10 @@ import { computed } from "vue";
 import { getPeriods } from "../api/periods";
 import { useResource } from "../composables/resource";
 import { periodValue } from "../store/period";
+import LoadState from "./LoadState.vue";
 import AppSelect from "./AppSelect.vue";
-const { data, error, refresh } = useResource((signal) => getPeriods(signal));
+const emit = defineEmits<{ change: [value: string] }>();
+const { data, loading, error, refresh } = useResource((signal) => getPeriods(signal));
 const options = computed(() => [
   { value: "", label: "Все периоды" },
   ...(data.value || []).map((p) => ({
@@ -18,8 +20,8 @@ const options = computed(() => [
 ]);
 </script>
 <template>
-  <div>
-    <AppSelect v-model="periodValue" label="Период" :options="options" /><button
+  <div class="period-select">
+    <LoadState skeleton="field" :loading="loading"><AppSelect v-model="periodValue" @update:model-value="emit('change', $event)" label="Период" :options="options" /></LoadState><button
       v-if="error"
       class="text-link"
       @click="refresh"
@@ -28,3 +30,7 @@ const options = computed(() => [
     </button>
   </div>
 </template>
+
+<style scoped>
+.period-select { width: 220px; max-width: 100%; min-width: 0; }
+</style>

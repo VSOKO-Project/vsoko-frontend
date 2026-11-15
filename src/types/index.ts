@@ -123,6 +123,7 @@ export interface WorkloadDto {
 // === Import ===
 export interface ImportCountDto {
   create: number;
+  update: number;
   existing: number;
   delete: number;
 }
@@ -140,6 +141,13 @@ export interface ImportIssueDto {
 }
 
 export interface ImportReportDto {
+  mode: ImportMode;
+  previewToken: string;
+  canSynchronize: boolean;
+  scopeDescription: string;
+  changes: { entity: string; key: string; field: string; before: string; after: string }[];
+  newTeachers: string[];
+  newDisciplines: string[];
   period: {
     id: string | null;
     startYear: number;
@@ -160,6 +168,8 @@ export interface ImportReportDto {
   createdGroupIds: string[] | null;
   studentGroupIds: string[] | null;
 }
+
+export type ImportMode = "AddOnly" | "UpdateExisting" | "SynchronizeWorkloads";
 
 // === Feedback ===
 export interface Grades {
@@ -198,6 +208,7 @@ export interface FeedbackDto {
 
 // === Rating ===
 export interface RatingDto {
+  feedbackCount: number;
   id: string;
   name: string;
   grade: number;
@@ -219,4 +230,82 @@ export interface ProblemDetails {
   status: number | null;
   detail: string | null;
   instance: string | null;
+}
+
+export interface DashboardCoverageDto {
+  submittedCount: number;
+  possibleCount: number;
+  completionPercent: number | null;
+}
+export interface DashboardSemesterDto {
+  coverage: DashboardCoverageDto;
+  periodId: string;
+  title: string;
+  feedbackCount: number;
+  averageGrade: number | null;
+  disciplineCount: number;
+}
+export interface DashboardDto {
+  ratedFeedbackCount: number;
+  comparison: { currentTitle: string; previousTitle: string; delta: number; currentFeedbackCount: number; previousFeedbackCount: number } | null;
+  coverage: DashboardCoverageDto;
+  feedbackCount: number;
+  teacherCount: number;
+  disciplineCount: number;
+  averageGrade: number | null;
+  lowGradeCount: number;
+  distribution: { label: string; value: number }[];
+  lowGrades: RatingDto[];
+  highGrades: RatingDto[];
+  timeline: DashboardSemesterDto[];
+}
+
+export interface FeedbackCategoryDto {
+  id: string;
+  name: string;
+  description: string;
+  requiresAttention: boolean;
+}
+export interface FeedbackEvidenceDto {
+  feedbackId: string;
+  quote: string;
+  sentiment: "Positive" | "Negative" | "Neutral";
+  basis: "Personal" | "Hearsay" | "Ambiguous";
+}
+export interface FeedbackSignalDto {
+  feedbackId: string;
+  signalKey: string;
+  categoryName: string;
+  quote: string;
+  basis: FeedbackEvidenceDto["basis"];
+  status: "Pending" | "InReview" | "Reviewed";
+  note: string;
+}
+export interface ProposedFeedbackCategoryDto {
+  name: string;
+  description: string;
+  requiresAttention: boolean;
+  evidence: FeedbackEvidenceDto[];
+}
+export interface FeedbackReportDto {
+  name: string;
+  totalFeedbackCount: number;
+  commentCount: number;
+  processedCount: number;
+  failedCount: number;
+  pendingCount: number;
+  generatedAtUtc: string;
+  version: string;
+  summary: string;
+  topics: {
+    categoryId: string;
+    name: string;
+    count: number;
+    positiveCount: number;
+    negativeCount: number;
+    neutralCount: number;
+    evidence: FeedbackEvidenceDto[];
+  }[];
+  signals: FeedbackSignalDto[];
+  proposedCategories: ProposedFeedbackCategoryDto[];
 }

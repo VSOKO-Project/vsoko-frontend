@@ -93,7 +93,7 @@ it("keeps a custom menu disabled during a pending action", async () => {
   wrapper.unmount();
 });
 
-it.each(["table", "cards", "form", "dashboard"] as const)(
+it.each(["table", "cards", "form", "dashboard", "workloads", "text", "list", "field", "options", "feedback", "criteria", "import"] as const)(
   "replaces the %s skeleton with content after loading",
   async (skeleton) => {
     const wrapper = mount(LoadState, {

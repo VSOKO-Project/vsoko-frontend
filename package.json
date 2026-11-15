@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "pnpm test && pnpm build && pnpm test:e2e",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "dev:mock": "vite --mode mock --host 127.0.0.1"
   },
   "dependencies": {
     "reka-ui": "2.11.0",

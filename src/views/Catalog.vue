@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ActionIcon from "../components/ActionIcon.vue";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
 import { computed, reactive, ref, watch } from "vue";
 import { getTeachers, renameTeacher, mergeTeachers } from "../api/teachers";
@@ -20,7 +21,7 @@ import AppSelect from "../components/AppSelect.vue";
 import LoadState from "../components/LoadState.vue";
 import Pagination from "../components/Pagination.vue";
 import Modal from "../components/Modal.vue";
-const props = defineProps<{ kind: "teachers" | "disciplines" | "criteria" }>();
+const props = defineProps<{ kind: "teachers" | "disciplines" | "criteria"; embedded?: boolean }>();
 const page = ref(1);
 const query = ref("");
 const open = ref(false);
@@ -154,7 +155,7 @@ async function merge() {
 }
 </script>
 <template>
-  <div class="page-header">
+  <div v-if="!embedded" class="page-header">
     <h1 class="page-title">{{ title }}</h1>
     <p class="page-subtitle">
       {{
@@ -211,20 +212,23 @@ async function merge() {
             <td>
               <div class="table-actions">
                 <button
-                  class="text-link"
+                  class="action-icon-button"
+                  :title="`Редактировать: ${row.fullName || row.name}`"
                   :aria-label="`Редактировать: ${row.fullName || row.name}`"
                   @click="edit(row)"
                 >
-                  Изменить</button
+                  <ActionIcon name="edit" /></button
                 ><button
                   v-if="kind === 'criteria'"
-                  class="text-link danger"
+                  class="action-icon-button action-icon-button--danger"
+                  :aria-label="`Удалить: ${row.name}`"
+                  :title="`Удалить: ${row.name}`"
                   :disabled="action.pending.value"
                   @click="remove(row)"
                 >
-                  Удалить</button
-                ><button v-else class="text-link" @click="startMerge(row)">
-                  Объединить
+                  <ActionIcon name="delete" /></button
+                ><button v-else class="action-icon-button" :aria-label="`Объединить: ${row.fullName || row.name}`" :title="`Объединить: ${row.fullName || row.name}`" @click="startMerge(row)">
+                  <ActionIcon name="merge" />
                 </button>
               </div>
             </td>
@@ -276,11 +280,12 @@ async function merge() {
         placeholder="Начните вводить название"
     /></label>
     <LoadState
-      skeleton="cards"
+      skeleton="list"
       :loading="mergeResults.loading.value"
       :error="mergeResults.error.value"
       @retry="mergeResults.refresh"
       ><div
+        v-if="mergeResults.data.value?.length"
         class="merge-results"
         role="radiogroup"
         aria-label="Оставить запись"
@@ -297,10 +302,7 @@ async function merge() {
             :value="row.id"
           /><span>{{ row.fullName || row.name }}</span></label
         >
-        <p v-if="!mergeResults.data.value?.length" class="muted">
-          Подходящих записей нет.
-        </p>
-      </div></LoadState
+      </div><p v-else class="muted merge-empty">Подходящих записей нет.</p></LoadState
     >
     <p v-if="action.error.value" role="alert" class="error-text">
       {{ action.error.value }}

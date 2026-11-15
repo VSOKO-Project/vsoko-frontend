@@ -3,15 +3,16 @@ import { auth, homePath, syncSession } from "./store/auth";
 import Login from "./views/Login.vue";
 import Workloads from "./views/Workloads.vue";
 import Feedback from "./views/Feedback.vue";
-import FeedbackBrowser from "./views/FeedbackBrowser.vue";
 import History from "./views/History.vue";
 import Dashboard from "./views/Dashboard.vue";
 import Catalog from "./views/Catalog.vue";
-import Ratings from "./views/Ratings.vue";
+import Directory from "./views/Directory.vue";
+import FeedbackDetail from "./views/FeedbackDetail.vue";
 import Summaries from "./views/Summaries.vue";
 import Reports from "./views/Reports.vue";
 import Periods from "./views/Periods.vue";
 import Import from "./views/Import.vue";
+import Export from "./views/Export.vue";
 import NotFound from "./views/NotFound.vue";
 export const router = createRouter({
   history: createWebHistory(),
@@ -28,26 +29,25 @@ export const router = createRouter({
     { path: "/my-feedback", component: History },
     {
       path: "/feedback",
-      component: FeedbackBrowser,
+      redirect: { path: "/disciplines", query: { tab: "feedback" } },
       meta: { admin: true },
     },
     { path: "/dashboard", component: Dashboard, meta: { admin: true } },
-    ...(["teachers", "disciplines", "criteria"] as const).map((kind) => ({
-      path: `/${kind}`,
-      component: Catalog,
-      props: { kind },
-      meta: { admin: true },
+    { path: "/criteria", component: Catalog, props: { kind: 'criteria' }, meta: { admin: true } },
+    ...(["teachers", "disciplines"] as const).map(kind => ({
+      path: `/${kind}`, component: Directory, props: { kind }, meta: { admin: true },
     })),
-    ...(["teachers", "disciplines"] as const).map((kind) => ({
+    { path: "/ratings", redirect: to => ({ path: to.query.kind === 'teachers' ? '/teachers' : '/disciplines', query: { tab: 'ratings' } }) },
+    ...(["teachers", "disciplines"] as const).map(kind => ({
       path: `/${kind}/rating`,
-      component: Ratings,
-      props: { kind },
-      meta: { admin: true },
+      redirect: (to: { query: object }) => ({ path: `/${kind}`, query: { ...to.query, tab: 'ratings' } }),
     })),
+    { path: "/feedback/:id", component: FeedbackDetail, meta: { admin: true } },
     { path: "/summaries", component: Summaries, meta: { admin: true } },
     { path: "/reports", component: Reports, meta: { admin: true } },
     { path: "/periods", component: Periods, meta: { admin: true } },
     { path: "/import", component: Import, meta: { admin: true } },
+    { path: "/export", component: Export, meta: { admin: true } },
     { path: "/:pathMatch(.*)*", component: NotFound, meta: { public: true } },
   ],
 });

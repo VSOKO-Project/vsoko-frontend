@@ -23,7 +23,8 @@ Set `VITE_API_BASE_URL` to the API root, such as `https://api.vsoko.tech/api`. I
 - Student workloads, criteria-based feedback, device-local drafts isolated by account and workload, feedback history, editing and deletion during open periods.
 - Admin feedback starts with choosing a discipline or teacher. Date and average-grade sorting is applied by the API before pagination; creation timestamps are displayed when available.
 - Administrator overview with period-filtered statistics, semester feedback charts, grade distribution and low-grade disciplines; teacher/discipline results, feedback, editable catalogs, live search when merging records, criteria, AI summaries, PDF reports and period management.
-- Excel import preview/apply, validation issues, proposed deletions, semester export, teacher selection and credential downloads.
+- Excel import with explicit add/update/synchronize modes, before/after differences, validation issues, protected workload deletions, semester export with stable catalog IDs and credential downloads. A changed plan requires confirmation again; the final report retains counts, changes and warnings. Deploy with the API version supporting `mode` and `previewToken` (see `vsoko-api/docs/import-workflow.md`).
+- The administrator's Export page (`/export`) downloads student credentials for selected or all groups. Import retains a contextual credential download only after a successful import, scoped to the groups in its result.
 - Responsive navigation, system/light/dark themes, keyboard rating controls, native modal focus management, loading/error/empty states and 404.
 
 The frontend only displays data and capabilities supplied by the existing API. The mockup's additional features (faculty/department filtering, semester-comparison reports, CSV, anonymity thresholds and comment redaction) need backend contracts and are not represented as implemented guarantees.
@@ -55,3 +56,21 @@ Confirmations use the shared app dialog. Background refreshes retain existing da
 ## System guide
 
 [Product, architecture, integration and operations](https://gitlab.com/vsoko/specs).
+
+## Local mock preview
+
+```sh
+pnpm dev:mock
+```
+
+Open the printed localhost URL. Sign in as `student` or `admin` with any non-empty password. This mode serves an in-memory API inside Vite with sample workloads, feedback, catalogs and ratings. Feedback and catalog edits last until the server restarts. Import uses static test fixtures; file exports and AI generation are not simulated fully. Unknown endpoints return an explicit error. No production API is contacted, and the mock middleware is enabled only by the development `mock` mode.
+
+The admin navigation groups catalogs, ratings and feedback inside Teachers and Disciplines, with List / Ratings / Feedback tabs. Existing `/ratings`, `/teachers/rating`, `/disciplines/rating` and `/feedback` URLs redirect to these sections. The Dashboard (Сводка) consumes `GET /api/Dashboard`; deploy the accompanying API endpoint before the frontend. Its trend uses equal-weight discipline averages on a fixed 1–5 scale and leaves missing semesters as gaps.
+
+### Анализ отзывов
+
+Страница `/summaries` и сводки в рейтингах используют структурированный отчёт API:
+покрытие обработки, темы с количествами и цитатами, отдельные серьёзные сообщения,
+предложения категорий. Ссылка на каждый источник ведёт на `/feedback/{id}` и
+загружает полный отзыв через авторизованный API. Администратор может добавить
+категорию и сохранить статус рассмотрения сообщения с заметкой.

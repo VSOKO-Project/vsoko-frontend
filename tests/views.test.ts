@@ -77,20 +77,21 @@ async function open(path: string, admin = true) {
   return wrapper;
 }
 it.each([
-  ["/dashboard", "Обзор результатов"],
-  ["/workloads", "Оценить занятия"],
-  ["/feedback/new?workloadId=w1", "Оценка занятия"],
+  ["/dashboard", "Сводка"],
+  ["/workloads", "Оценка обучения"],
+  ["/feedback/new?workloadId=w1", "Оценка дисциплины и преподавателя"],
   ["/my-feedback", "Мои оценки"],
-  ["/feedback", "Отзывы"],
+  ["/feedback", "Дисциплины"],
   ["/teachers", "Преподаватели"],
   ["/disciplines", "Дисциплины"],
   ["/criteria", "Критерии оценки"],
-  ["/teachers/rating", "Оценки преподавателей"],
-  ["/disciplines/rating", "Оценки дисциплин"],
-  ["/summaries", "Сводки ИИ"],
+  ["/teachers/rating", "Преподаватели"],
+  ["/disciplines/rating", "Дисциплины"],
+  ["/summaries", "Анализ отзывов"],
   ["/reports", "Отчёты и данные"],
   ["/periods", "Учебные периоды"],
   ["/import", "Импорт"],
+  ["/export", "Экспорт"],
 ])("renders %s with server data", async (path, title) => {
   const view = await open(path);
   expect(view.get("h1").text()).toBe(title);
@@ -161,7 +162,7 @@ it("persists theme selection", async () => {
 function button(view: VueWrapper, text: string) {
   const result = view
     .findAll("button")
-    .find((button) => button.text() === text);
+    .find((button) => button.text() === text) || view.findAll("button").find((button) => button.attributes("aria-label")?.startsWith(text));
   if (!result) throw new Error(`Button missing: ${text}`);
   return result;
 }
@@ -207,7 +208,7 @@ it("renames a teacher without losing the full name parts", async () => {
   );
   vi.spyOn(HTMLDialogElement.prototype, "close").mockImplementation(() => {});
   const view = await open("/teachers");
-  await button(view, "Изменить").trigger("click");
+  await button(view, "Редактировать:").trigger("click");
   await flushPromises();
   const inputs = view.findAll("dialog input");
   await inputs[0]!.setValue("Иванова");
@@ -251,7 +252,19 @@ it("generates a summary only after selection", async () => {
   expect(view.get(".summary-text").text()).toContain("понятные объяснения");
   expect(view.get(".ai-note").text()).toContain("неточности");
 });
-it("downloads the report for the selected semester", async () => {
+it("opens the original feedback from an evidence link", async () => {
+  const view = await open("/summaries");
+  await view.findAll("main select")[1]!.setValue("t1");
+  await button(view, "Сформировать сводку").trigger("click");
+  await flushPromises();
+  const link = view.get('.analysis-evidence a[href="/feedback/f1"]');
+  await link.trigger("click");
+  await flushPromises();
+  expect(router.currentRoute.value.path).toBe("/feedback/f1");
+  expect(view.get("h1").text()).toBe("Исходный отзыв");
+  expect(view.get("blockquote").text()).toBe("Понятные лекции");
+});
+it("archives a generated report and downloads its saved file after reopening the page", async () => {
   Object.defineProperty(URL, "createObjectURL", {
     configurable: true,
     value: vi.fn(() => "blob:test-report"),
@@ -260,8 +273,19 @@ it("downloads the report for the selected semester", async () => {
     configurable: true,
     value: vi.fn(),
   });
-  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  const clicks = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  let generated = false;
+  const entry = { id: "r1", periodTitle: "Осень 2026", createdAtUtc: "2026-11-15T17:00:00Z", fileName: "saved-report.pdf", sizeBytes: 2048 };
+  vi.mocked(fetch).mockImplementation(async (input, options) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/api/Report/history") return new Response(JSON.stringify({ data: { items: generated ? [entry] : [], page: 1, pageSize: 10, totalCount: generated ? 1 : 0, totalPages: generated ? 1 : 0 } }));
+    if (path === "/api/Report/history/r1") return new Response("%PDF-saved");
+    if (path === "/api/Report" && options?.method === "POST") generated = true;
+    return original(input, options);
+  });
   const view = await open("/reports");
+  expect(view.text()).toContain("Пока нет отчётов");
   await view.get("select[aria-label=Период]").setValue("p:p1");
   await button(view, "Сформировать отчёт").trigger("click");
   await flushPromises();
@@ -269,7 +293,18 @@ it("downloads the report for the selected semester", async () => {
     .mocked(fetch)
     .mock.calls.find(([, options]) => options?.method === "POST");
   expect(String(call?.[0])).toContain("/Report?periodId=p1");
-  expect(view.text()).toContain("Скачать повторно");
+  expect(view.text()).toContain("Отчёт готов и сохранён в истории");
+  expect(view.get(".report-history__list").text()).toContain("Осень 2026");
+  expect(view.get(".report-history__list").text()).toContain("2 КБ");
+  await view.get("select[aria-label=Период]").setValue("y:2026");
+  expect(view.get(".report-history__list").text()).toContain("Осень 2026");
+  view.unmount();
+  const reopened = await open("/reports");
+  await reopened.get(".report-history__download").trigger("click");
+  await flushPromises();
+  expect(vi.mocked(fetch).mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(1);
+  expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toContain("/Report/history/r1");
+  expect(clicks.mock.instances.at(-1)?.download).toBe("saved-report.pdf");
 });
 it("blocks invalid import files before any preview request", async () => {
   const view = await open("/import");
@@ -317,7 +352,7 @@ it("previews and confirms an import before writing", async () => {
 });
 it("edits an existing feedback and sends the current criteria", async () => {
   const view = await open("/my-feedback", false);
-  await button(view, "Редактировать").trigger("click");
+  await button(view, "Редактировать оценку:").trigger("click");
   await flushPromises();
   await view.get("dialog textarea").setValue("Дополненный комментарий");
   await button(view, "Сохранить").trigger("click");
@@ -337,7 +372,7 @@ it("edits an existing feedback and sends the current criteria", async () => {
 });
 it("deletes an own feedback only after confirmation", async () => {
   const view = await open("/my-feedback", false);
-  await button(view, "Удалить").trigger("click");
+  await button(view, "Удалить отзыв:").trigger("click");
   await confirmDialog(view, "Удалить");
   await flushPromises();
   expect(
@@ -354,7 +389,7 @@ it("updates and deletes a criterion", async () => {
   const view = await open("/criteria");
   await view
     .findAll("button")
-    .find((b) => b.text() === "Изменить")!
+    .find((b) => b.attributes("aria-label")?.startsWith("Редактировать:"))!
     .trigger("click");
   await flushPromises();
   await view.get("dialog input").setValue("Новая формулировка");
@@ -370,7 +405,7 @@ it("updates and deletes a criterion", async () => {
   ).toBe(true);
   await view
     .findAll("button")
-    .find((b) => b.text() === "Удалить")!
+    .find((b) => b.attributes("aria-label")?.startsWith("Удалить:"))!
     .trigger("click");
   await confirmDialog(view, "Удалить");
   await flushPromises();
@@ -391,7 +426,7 @@ it("loads rating summaries from the selected result", async () => {
 });
 it("renames a discipline and merges a duplicate into another record", async () => {
   const view = await open("/disciplines");
-  await button(view, "Изменить").trigger("click");
+  await button(view, "Редактировать:").trigger("click");
   await flushPromises();
   await view.get("dialog form input").setValue("Алгебра");
   await view.get("dialog form").trigger("submit");
@@ -404,7 +439,7 @@ it("renames a discipline and merges a duplicate into another record", async () =
           String(url).endsWith("/Disciplines/d1") && o?.method === "PUT",
       ),
   ).toBe(true);
-  await button(view, "Объединить").trigger("click");
+  await button(view, "Объединить:").trigger("click");
   await flushPromises();
   const merge = view
     .findAll("dialog")
@@ -446,7 +481,7 @@ it("renames a discipline and merges a duplicate into another record", async () =
     ]),
   );
 });
-it("exports a semester and selected credentials", async () => {
+it("downloads semester data and a template from import", async () => {
   Object.defineProperty(URL, "createObjectURL", {
     configurable: true,
     value: vi.fn(() => "blob:export"),
@@ -468,13 +503,8 @@ it("exports a semester and selected credentials", async () => {
   ).toBe(true);
   await button(view, "Пустой шаблон").trigger("click");
   await flushPromises();
-  await button(view, "Скачать для всех групп").trigger("click");
-  await flushPromises();
-  expect(
-    vi
-      .mocked(fetch)
-      .mock.calls.some(([url]) => String(url).includes("/Import/credentials")),
-  ).toBe(true);
+  expect(view.text()).not.toContain("Скачать для всех групп");
+  expect(view.findAll("h2").some(h => h.text() === "Логины и пароли")).toBe(false);
 });
 it("displays an AI summary failure with retry", async () => {
   const view = await open("/summaries");
@@ -514,8 +544,8 @@ it("shows the signed-in account and removes footer slogans", async () => {
 });
 it("shows charts and period-specific counts on the dashboard", async () => {
   const view = await open("/dashboard");
-  expect(view.findAll("svg[role=img]")).toHaveLength(2);
-  expect(view.text()).toContain("Отзывы по семестрам");
+  expect(view.findAll("svg[role=img]")).toHaveLength(3);
+  expect(view.text()).toContain("Заполнение по семестрам");
   expect(view.text()).toContain("Распределение оценок");
   await view.get("select[aria-label=Период]").setValue("p:p1");
   await flushPromises();
@@ -580,7 +610,7 @@ it("places the reset notice before the login card", async () => {
 });
 it("selects a teacher before loading their reviews", async () => {
   const view = await open("/feedback");
-  await button(view, "По преподавателю").trigger("click");
+  await router.push("/teachers?tab=feedback");
   await flushPromises();
   expect(view.text()).toContain("Петрова Анна Ивановна");
   await view.get(".feedback-target").trigger("click");

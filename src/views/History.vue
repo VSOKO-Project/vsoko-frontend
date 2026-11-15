@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import ActionIcon from "../components/ActionIcon.vue";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
-import { ref } from "vue";
-import { getFeedbacks, deleteFeedback, updateFeedback } from "../api/feedback";
+import { ref, watch } from "vue";
+import { getFeedbackById, getFeedbacks, deleteFeedback, updateFeedback } from "../api/feedback";
 import { getCriteria } from "../api/criteria";
 import { useResource, useAction } from "../composables/resource";
 import type { FeedbackDto } from "../types";
@@ -10,6 +11,8 @@ import LoadState from "../components/LoadState.vue";
 import Pagination from "../components/Pagination.vue";
 import Modal from "../components/Modal.vue";
 import Rating from "../components/Rating.vue";
+import { useRoute } from "vue-router";
+const route = useRoute();
 const page = ref(1);
 const { data, loading, error, refresh } = useResource(
   () =>
@@ -25,6 +28,20 @@ const selected = ref<FeedbackDto>();
 const grades = ref<Record<string, number>>({});
 const comment = ref("");
 const action = useAction();
+const openedFromLink = ref("");
+watch(data, async value => {
+  if (!value || typeof route.query.edit !== 'string' || openedFromLink.value === route.query.edit) return;
+  openedFromLink.value = route.query.edit;
+  await action.run(async () => {
+    const requested = value.items.find(f => f.id === route.query.edit) || await getFeedbackById(String(route.query.edit));
+    if (requested.workload.period?.isFeedbackOpen) edit(requested);
+  });
+});
+function average(fb: FeedbackDto) {
+  return fb.criteriaFeedback.length ? (fb.criteriaFeedback.reduce((sum, c) => sum + c.criteriaScore, 0) / fb.criteriaFeedback.length).toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : '—';
+}
+function date(value: string) { return new Date(value).toLocaleDateString('ru-RU'); }
+
 function edit(fb: FeedbackDto) {
   selected.value = fb;
   grades.value = Object.fromEntries(
@@ -85,9 +102,9 @@ async function save() {
     skeleton="cards"
     :loading="loading"
     :error="error"
-    :empty="!data?.items.length"
+
     @retry="refresh"
-    ><div class="history-list">
+    ><div v-if="!data?.items.length" class="empty-state">Вы пока не отправили ни одной оценки. <RouterLink class="text-link" to="/workloads">Выбрать дисциплину</RouterLink></div><div class="history-list">
       <article v-for="fb in data?.items" :key="fb.id" class="card">
         <div class="history-heading">
           <div>
@@ -111,6 +128,8 @@ async function save() {
             }}</span
           >
         </div>
+        <p class="muted">Средняя оценка: {{ average(fb) }} / 5<span v-if="fb.createdAtUtc"> · {{ date(fb.createdAtUtc) }}</span></p>
+        <details class="student-feedback-details"><summary>Посмотреть оценки и комментарий</summary>
         <div
           v-for="c in fb.criteriaFeedback"
           :key="c.criteria.id"
@@ -123,15 +142,17 @@ async function save() {
           />
         </div>
         <blockquote v-if="fb.comment">{{ fb.comment }}</blockquote>
+        </details>
         <div class="feedback-actions" v-if="fb.workload.period?.isFeedbackOpen">
-          <button class="btn btn--secondary" @click="edit(fb)">
-            Редактировать</button
+          <button class="action-icon-button" :aria-label="`Редактировать оценку: ${fb.workload.discipline.name}`" title="Редактировать оценку" @click="edit(fb)">
+            <ActionIcon name="edit" /></button
           ><button
-            class="btn btn--ghost"
+            class="action-icon-button action-icon-button--danger"
+            :aria-label="`Удалить отзыв: ${fb.workload.discipline.name}`" title="Удалить отзыв"
             :disabled="action.pending.value"
             @click="remove(fb)"
           >
-            Удалить
+            <ActionIcon name="delete" />
           </button>
         </div>
       </article>
@@ -142,7 +163,7 @@ async function save() {
     title="Редактировать оценку"
     @close="selected = undefined"
     ><LoadState
-      skeleton="form"
+      skeleton="criteria"
       :loading="criteria.loading.value"
       :error="criteria.error.value"
       @retry="criteria.refresh"

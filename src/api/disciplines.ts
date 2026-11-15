@@ -15,10 +15,11 @@ interface PaginationParams {
 
 export async function getDisciplines(
   params: PaginationParams & PeriodFilterParams,
+  signal?: AbortSignal,
 ): Promise<PagedResultDto<DisciplineDto>> {
   const response = await api.get<
     ApiSuccessResult<PagedResultDto<DisciplineDto>>
-  >("/Disciplines", { params });
+  >("/Disciplines", { params, signal });
   return response.data.data;
 }
 
@@ -53,5 +54,10 @@ export async function mergeDisciplines(
     `/Disciplines/${sourceId}/merge`,
     { targetId },
   );
+  return response.data.data;
+}
+
+export async function getDisciplineById(id: string, signal?: AbortSignal): Promise<DisciplineDto> {
+  const response = await api.get<ApiSuccessResult<DisciplineDto>>(`/Disciplines/${encodeURIComponent(id)}`, { signal });
   return response.data.data;
 }

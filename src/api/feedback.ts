@@ -13,6 +13,8 @@ interface FeedbackParams {
   Page?: number;
   PageSize?: number;
   DisciplineId?: string;
+  PeriodId?: string;
+  StartYear?: number;
   TeacherId?: string;
   WorkloadId?: string;
 }

@@ -1,88 +1,34 @@
 <script setup lang="ts">
+import { feedbackLocation, feedbackCountText } from "../utils/feedback-links";
 import { computed } from "vue";
-import { getTeachersRating } from "../api/teachers";
-import { getDisciplinesRating } from "../api/disciplines";
-import { getFeedbacks } from "../api/feedback";
-import { getPeriods } from "../api/periods";
+import { getDashboard } from "../api/dashboard";
 import { useResource } from "../composables/resource";
 import { periodValue, periodParams } from "../store/period";
-import { averageGrade } from "../utils/analytics";
 import PeriodSelect from "../components/PeriodSelect.vue";
 import LoadState from "../components/LoadState.vue";
 import ColumnChart from "../components/ColumnChart.vue";
-const { data, loading, error, refresh } = useResource(async () => {
-  const [teachers, disciplines, feedback, periods] = await Promise.all([
-    getTeachersRating({ Page: 1, PageSize: 1000, ...periodParams.value }),
-    getDisciplinesRating({ Page: 1, PageSize: 1000, ...periodParams.value }),
-    getFeedbacks({ Page: 1, PageSize: 1 }),
-    getPeriods(),
-  ]);
-  return { teachers, disciplines, feedback, periods };
-}, [periodValue]);
-const average = computed(() =>
-  averageGrade(data.value?.disciplines.items || []),
-);
-const lowGrades = computed(() =>
-  (data.value?.disciplines.items || [])
-    .filter((d) => d.grade > 0 && d.grade < 3.5)
-    .sort((a, b) => a.grade - b.grade),
-);
-const responseCount = computed(() => {
-  if (!data.value) return 0;
-  if (!periodValue.value) return data.value.feedback.totalCount;
-  return data.value.periods
-    .filter((p) =>
-      periodParams.value.PeriodId
-        ? p.id === periodParams.value.PeriodId
-        : p.startYear === periodParams.value.StartYear,
-    )
-    .reduce((sum, p) => sum + p.feedbackCount, 0);
-});
+import CoverageChart from "../components/CoverageChart.vue";
+import GradeTrend from "../components/GradeTrend.vue";
+const { data, loading, error, refresh } = useResource(signal => getDashboard(periodParams.value, signal), [periodValue]);
 const stats = computed(() => [
-  { label: "Отзывов", value: responseCount.value.toLocaleString("ru-RU") },
-  {
-    label: "Средняя оценка дисциплин",
-    value:
-      average.value?.toLocaleString("ru-RU", {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }) || "—",
-  },
-  { label: "Преподавателей", value: data.value?.teachers.totalCount || 0 },
-  { label: "Требуют внимания", value: lowGrades.value.length },
+  { label: "Заполнение отзывов", value: data.value ? `${data.value.coverage.submittedCount.toLocaleString('ru-RU')} / ${data.value.coverage.possibleCount.toLocaleString('ru-RU')}` : '—', detail: data.value?.coverage.completionPercent != null ? `${data.value.coverage.completionPercent.toLocaleString('ru-RU')}% заполнено` : 'Нет доступной нагрузки' },
+  { label: "Средняя оценка дисциплин", value: data.value?.averageGrade?.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) || '—', detail: feedbackCountText(data.value?.ratedFeedbackCount || 0) },
+  { label: "Преподавателей", value: data.value?.teacherCount || 0 },
+  { label: "Требуют внимания", value: data.value?.lowGradeCount || 0 },
 ]);
-const timeline = computed(() =>
-  [...(data.value?.periods || [])]
-    .sort(
-      (a, b) =>
-        a.startYear - b.startYear ||
-        (a.term === b.term ? 0 : a.term === "Autumn" ? -1 : 1),
-    )
-    .slice(-6)
-    .map((p) => ({
-      label: p.title.replace(/\s*\(.+\)$/, ""),
-      value: p.feedbackCount,
-    })),
-);
-const distribution = computed(() =>
-  ["1–2", "2–3", "3–4", "4–5"].map((label, index) => ({
-    label,
-    value: (data.value?.disciplines.items || []).filter(
-      (d) => d.grade > 0 && Math.min(3, Math.floor(d.grade) - 1) === index,
-    ).length,
-  })),
-);
-const strongest = computed(() =>
-  [...(data.value?.disciplines.items || [])]
-    .filter((d) => d.grade >= 4)
-    .sort((a, b) => b.grade - a.grade)
-    .slice(0, 5),
-);
+const deltaText = computed(() => {
+  const delta = data.value?.comparison?.delta;
+  return delta === undefined || delta === 0 ? 'Без изменений' : `${delta > 0 ? '+' : '−'}${Math.abs(delta).toLocaleString('ru-RU', { maximumFractionDigits: 2 })}`;
+});
+const lowGrades = computed(() => data.value?.lowGrades || []);
+const strongest = computed(() => data.value?.highGrades || []);
+const distribution = computed(() => data.value?.distribution || []);
+const hasTrend = computed(() => data.value?.timeline.some(p => p.averageGrade !== null));
 </script>
 <template>
   <div class="page-header dashboard-heading">
     <div>
-      <h1 class="page-title">Обзор результатов</h1>
+      <h1 class="page-title">Сводка</h1>
       <p class="page-subtitle">Статистика оценок и отзывов</p>
     </div>
     <PeriodSelect />
@@ -97,26 +43,35 @@ const strongest = computed(() =>
         <div>
           <div class="stat-card__label">{{ stat.label }}</div>
           <div class="stat-card__value">{{ stat.value }}</div>
+          <p v-if="stat.detail" class="stat-card__detail">{{ stat.detail }}</p>
         </div>
       </article>
     </div>
+    <article class="card dashboard-trend">
+      <div class="panel-heading"><h2>Динамика средней оценки</h2><span class="muted">Шкала 1–5</span></div>
+      <p v-if="data?.comparison" class="chart-explanation trend-comparison" :title="`${data.comparison.currentTitle} и ${data.comparison.previousTitle}`">
+        {{ data.comparison.currentTitle }}: <strong>{{ deltaText }}</strong> к предыдущему семестру
+      </p>
+      <GradeTrend v-if="hasTrend" :items="data!.timeline" />
+      <div v-else class="empty-state">Пока нет оценок для построения динамики.</div>
+      <p class="chart-explanation">Среднее арифметическое оценок дисциплин с отзывами. Каждая дисциплина имеет одинаковый вес. Пропуски означают отсутствие оценок.</p>
+      <p class="chart-explanation">{{ periodParams.StartYear ? 'Семестры выбранного учебного года.' : periodParams.PeriodId ? 'До шести семестров до выбранного включительно.' : 'Последние шесть семестров.' }}</p>
+      <p v-if="data?.timeline.filter(p => p.averageGrade !== null).length === 1" class="chart-explanation">Оценки есть только за один семестр — сравнение появится после заполнения других.</p>
+    </article>
     <div class="dashboard-panels">
       <article class="card">
         <div class="panel-heading">
-          <h2>Отзывы по семестрам</h2>
+          <h2>Заполнение по семестрам</h2>
         </div>
-        <ColumnChart
-          v-if="timeline.length"
-          label="Количество отзывов по семестрам"
-          :items="timeline"
-        />
+        <CoverageChart v-if="data?.timeline.length" :items="data.timeline" />
         <div v-else class="empty-state">Пока нет данных по семестрам</div>
+        <p class="chart-explanation">Оставлено / возможно: один отзыв на каждую дисциплину с преподавателем. Расчёт по текущему составу активных студентов в группах.</p>
       </article>
       <article class="card">
         <div class="panel-heading">
           <h2>Распределение оценок</h2>
           <span class="muted"
-            >{{ data?.disciplines.totalCount || 0 }} дисциплин</span
+            >{{ data?.disciplineCount || 0 }} дисциплин</span
           >
         </div>
         <ColumnChart
@@ -124,7 +79,7 @@ const strongest = computed(() =>
           :items="distribution"
         />
         <p class="chart-explanation">
-          Количество дисциплин в каждом диапазоне средней оценки
+          Количество дисциплин в каждом диапазоне средней оценки. Дисциплины без оценок не учитываются.
         </p>
       </article>
     </div>
@@ -139,19 +94,20 @@ const strongest = computed(() =>
         <div v-if="!lowGrades.length" class="panel-empty">
           Нет дисциплин со средней оценкой ниже 3,5
         </div>
-        <div
-          v-for="item in lowGrades.slice(0, 5)"
+        <RouterLink
+          v-for="item in lowGrades"
+          :to="feedbackLocation('disciplines', item.id, periodValue)"
           :key="item.id"
           class="result-row"
         >
-          <span>{{ item.name }}</span><strong class="danger">{{
+<span class="result-name">{{ item.name }}<small>{{ feedbackCountText(item.feedbackCount) }}</small></span><strong class="danger">{{
             item.grade.toLocaleString("ru-RU", {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
             })
           }}</strong>
-        </div>
-        <RouterLink to="/disciplines/rating" class="text-link panel-link"
+        </RouterLink>
+        <RouterLink to="/disciplines?tab=ratings" class="text-link panel-link"
           >Все оценки дисциплин</RouterLink
         >
       </article>
@@ -163,16 +119,16 @@ const strongest = computed(() =>
         <div v-if="!strongest.length" class="panel-empty">
           Пока нет дисциплин с оценкой от 4,0
         </div>
-        <div v-for="item in strongest" :key="item.id" class="result-row">
-          <span>{{ item.name }}</span><strong>{{
+        <RouterLink v-for="item in strongest" :key="item.id" class="result-row" :to="feedbackLocation('disciplines', item.id, periodValue)">
+          <span class="result-name">{{ item.name }}<small>{{ feedbackCountText(item.feedbackCount) }}</small></span><strong>{{
             item.grade.toLocaleString("ru-RU", {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
             })
           }}</strong>
-        </div>
-        <RouterLink to="/teachers/rating" class="text-link panel-link"
-          >Оценки преподавателей</RouterLink
+        </RouterLink>
+        <RouterLink to="/disciplines?tab=ratings" class="text-link panel-link"
+          >Все оценки дисциплин</RouterLink
         >
       </article>
     </div></LoadState

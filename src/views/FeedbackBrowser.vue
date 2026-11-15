@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import ActionIcon from "../components/ActionIcon.vue";
+import { useRoute, useRouter } from "vue-router";
+import { periodParams, periodValue } from "../store/period";
+import PeriodSelect from "../components/PeriodSelect.vue";
+import { computed, reactive, ref, watch } from "vue";
 import { getFeedbacks, deleteFeedback } from "../api/feedback";
-import { getTeachers } from "../api/teachers";
-import { getDisciplines } from "../api/disciplines";
+import { getTeachers, getTeacherById, renameTeacher } from "../api/teachers";
+import { getDisciplines, getDisciplineById, renameDiscipline } from "../api/disciplines";
 import { useAction, useResource } from "../composables/resource";
 import { confirmAction } from "../composables/confirmation";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
@@ -10,13 +14,29 @@ import type { FeedbackDto, FeedbackSort, PagedResultDto } from "../types";
 import AppSelect from "../components/AppSelect.vue";
 import LoadState from "../components/LoadState.vue";
 import Pagination from "../components/Pagination.vue";
+import Modal from "../components/Modal.vue";
 import Rating from "../components/Rating.vue";
 type Kind = "discipline" | "teacher";
-const kind = ref<Kind>("discipline");
+const props = defineProps<{ kind: Kind }>();
+const kind = computed(() => props.kind);
+const route = useRoute();
+const router = useRouter();
+const targetId = typeof route.query.targetId === 'string' ? route.query.targetId : '';
+if (typeof route.query.period === "string") periodValue.value = route.query.period;
+watch(() => route.query.period, value => {
+  if (typeof value === "string") periodValue.value = value;
+});
+const record = useResource(async signal => {
+  if (!targetId) return null;
+  const item = await (kind.value === 'teacher' ? getTeacherById : getDisciplineById)(targetId, signal);
+  return { item, id: item.id, name: 'fullName' in item && typeof item.fullName === 'string' ? item.fullName : item.name, kind: kind.value };
+});
+function changePeriod(value: string) { void router.replace({ path: route.path, query: { ...route.query, period: value } }); }
 const search = ref("");
 const query = ref("");
 const directoryPage = ref(1);
 const target = ref<{ id: string; name: string; kind: Kind }>();
+watch(record.data, value => { if (value) target.value = value; });
 const page = ref(1);
 const sort = ref<FeedbackSort>("Newest");
 watch(search, (value, _old, cleanup) => {
@@ -26,26 +46,24 @@ watch(search, (value, _old, cleanup) => {
   }, 200);
   cleanup(() => clearTimeout(timer));
 });
-watch(kind, () => {
-  search.value = "";
-  query.value = "";
-  directoryPage.value = 1;
-});
-const directory = useResource(async () => {
+watch(periodValue, () => { directoryPage.value = 1; });
+const directory = useResource(async (signal) => {
+  if (targetId) return { items: [], totalCount: 0, totalPages: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
   const params = {
     Page: directoryPage.value,
     PageSize: DEFAULT_PAGE_SIZE,
     Query: query.value,
+    ...periodParams.value,
   };
   if (kind.value === "teacher") {
-    const result = await getTeachers(params);
+    const result = await getTeachers(params, signal);
     return {
       ...result,
       items: result.items.map((t) => ({ id: t.id, name: t.fullName })),
     };
   }
-  return getDisciplines(params);
-}, [kind, query, directoryPage]);
+  return getDisciplines(params, signal);
+}, [kind, query, directoryPage, periodValue]);
 const feedback = useResource<PagedResultDto<FeedbackDto>>(
   (signal) =>
     target.value
@@ -54,6 +72,7 @@ const feedback = useResource<PagedResultDto<FeedbackDto>>(
             Page: page.value,
             PageSize: DEFAULT_PAGE_SIZE,
             Sort: sort.value,
+            ...periodParams.value,
             ...(target.value.kind === "teacher"
               ? { TeacherId: target.value.id }
               : { DisciplineId: target.value.id }),
@@ -67,23 +86,40 @@ const feedback = useResource<PagedResultDto<FeedbackDto>>(
           totalPages: 0,
           totalCount: 0,
         }),
-  [target, page, sort],
+  [target, page, sort, periodValue],
 );
-watch(sort, () => {
+watch([sort, periodValue], () => {
   page.value = 1;
 });
 function choose(item: { id: string; name: string }) {
-  feedback.data.value = undefined;
-  page.value = 1;
-  target.value = { ...item, kind: kind.value };
-}
-function changeKind(value: Kind) {
-  directory.data.value = undefined;
-  kind.value = value;
+  void router.push({ path: route.path, query: { ...route.query, tab: 'feedback', targetId: item.id, period: periodValue.value } });
 }
 function changeTarget() {
-  target.value = undefined;
-  feedback.data.value = undefined;
+  const { targetId: _id, ...query } = route.query;
+  void router.push({ path: route.path, query });
+}
+const editing = ref(false);
+const editAction = useAction();
+const editTitle = computed(() => kind.value === 'teacher' ? 'Редактировать преподавателя' : 'Редактировать дисциплину');
+const form = reactive({ name: '', surname: '', patronymic: '' });
+function startEdit() {
+  const item = record.data.value?.item;
+  if (!item) return;
+  form.name = item.name;
+  form.surname = 'surname' in item ? String(item.surname) : '';
+  form.patronymic = 'patronymic' in item ? String(item.patronymic) : '';
+  editAction.error.value = '';
+  editing.value = true;
+}
+async function saveRecord() {
+  if (!target.value || !form.name.trim() || (kind.value === 'teacher' && !form.surname.trim())) return;
+  await editAction.run(async () => {
+    const item = kind.value === 'teacher'
+      ? await renameTeacher(target.value!.id, { name: form.name.trim(), surname: form.surname.trim(), patronymic: form.patronymic.trim() })
+      : await renameDiscipline(target.value!.id, form.name.trim());
+    record.data.value = { item, id: item.id, name: 'fullName' in item && typeof item.fullName === 'string' ? item.fullName : item.name, kind: kind.value };
+    editing.value = false;
+  });
 }
 const action = useAction();
 async function remove(item: FeedbackDto) {
@@ -128,37 +164,11 @@ const sortOptions = [
   { value: "GradeDesc", label: "Сначала высокая оценка" },
   { value: "GradeAsc", label: "Сначала низкая оценка" },
 ];
-const title = computed(() =>
-  kind.value === "teacher" ? "Преподаватели" : "Дисциплины",
-);
 </script>
 <template>
-  <div class="page-header">
-    <h1 class="page-title">Отзывы</h1>
-    <p class="page-subtitle">
-      {{
-        target
-          ? "Отзывы студентов по выбранной записи"
-          : "Выберите дисциплину или преподавателя, чтобы посмотреть отзывы"
-      }}
-    </p>
-  </div>
-  <template v-if="!target"
-    ><section class="card feedback-picker">
-      <div class="segmented" role="group" aria-label="Тип поиска отзывов">
-        <button
-          :aria-pressed="kind === 'discipline'"
-          @click="changeKind('discipline')"
-        >
-          По дисциплине</button
-        ><button
-          :aria-pressed="kind === 'teacher'"
-          @click="changeKind('teacher')"
-        >
-          По преподавателю
-        </button>
-      </div>
-      <input
+  <LoadState skeleton="cards" :loading="!!targetId && record.loading.value" :error="record.error.value" @retry="record.refresh">
+  <template v-if="!target">
+      <div class="toolbar"><input
         v-model="search"
         type="search"
         :aria-label="
@@ -167,46 +177,39 @@ const title = computed(() =>
             : 'Поиск дисциплины для отзывов'
         "
         :placeholder="
-          kind === 'teacher' ? 'Фамилия преподавателя' : 'Название дисциплины'
+          kind === 'teacher' ? 'Найти преподавателя…' : 'Найти дисциплину…'
         "
-      />
-      <h2 class="picker-heading">{{ title }}</h2>
+      /><PeriodSelect @change="changePeriod" /></div>
       <LoadState
         skeleton="table"
         :loading="directory.loading.value"
         :error="directory.error.value"
         :empty="!directory.data.value?.items.length"
         @retry="directory.refresh"
-        ><div class="feedback-targets">
-          <button
-            v-for="item in directory.data.value?.items"
-            :key="item.id"
-            class="feedback-target"
-            @click="choose(item)"
-          >
-            <span>{{ item.name }}</span><span class="target-action"
-              >Показать отзывы</span
-            >
-          </button>
+        ><div class="table-wrapper feedback-targets">
+          <table>
+            <thead><tr><th>{{ kind === 'teacher' ? 'Преподаватель' : 'Дисциплина' }}</th></tr></thead>
+            <tbody><tr v-for="item in directory.data.value?.items" :key="item.id"><td>
+              <button class="text-link feedback-target" @click="choose(item)">{{ item.name }}</button>
+            </td></tr></tbody>
+          </table>
         </div>
         <Pagination
           v-model:page="directoryPage"
           :total="directory.data.value?.totalPages || 0"
-      /></LoadState></section
-  ></template>
+      /></LoadState></template>
   <template v-else
-    ><section class="feedback-selection">
+    ><button class="text-link back-link" @click="changeTarget">{{ kind === 'teacher' ? 'К списку преподавателей' : 'К списку дисциплин' }}</button>
+    <section class="feedback-selection">
       <div>
         <span class="muted">{{
           target.kind === "teacher" ? "Преподаватель" : "Дисциплина"
         }}</span>
-        <h2>{{ target.name }}</h2>
-        <button class="text-link" @click="changeTarget">Изменить выбор</button>
+        <div class="feedback-name"><h2>{{ target.name }}</h2><button class="action-icon-button" :aria-label="editTitle" :title="editTitle" @click="startEdit"><ActionIcon name="edit" /></button></div>
       </div>
       <div class="feedback-sorting">
-        <span v-if="feedback.data.value" class="muted"
-          >Отзывов: {{ feedback.data.value.totalCount }}</span
-        ><AppSelect
+        <PeriodSelect @change="changePeriod" />
+        <AppSelect
           v-model="sort"
           label="Сортировка отзывов"
           :options="sortOptions"
@@ -269,17 +272,31 @@ const title = computed(() =>
           </details>
           <div class="review-actions">
             <button
-              class="text-link danger"
+              class="action-icon-button action-icon-button--danger"
+              :aria-label="`Удалить отзыв: ${item.workload.discipline.name}`" title="Удалить отзыв"
               :disabled="action.pending.value"
               @click="remove(item)"
             >
-              Удалить отзыв
+              <ActionIcon name="delete" />
             </button>
           </div>
         </article>
       </div>
-      <Pagination
-        v-model:page="page"
-        :total="feedback.data.value?.totalPages || 0" /></LoadState
+      <div class="results-footer">
+        <span class="muted">Всего отзывов: {{ feedback.data.value?.totalCount.toLocaleString('ru-RU') }}</span>
+        <Pagination v-model:page="page" :total="feedback.data.value?.totalPages || 0" />
+      </div></LoadState
   ></template>
+  </LoadState>
+  <Modal :open="editing" :title="editTitle" @close="editing = false">
+    <form class="feedback-record-form" @submit.prevent="saveRecord">
+      <fieldset :disabled="editAction.pending.value">
+        <label v-if="kind === 'teacher'" class="field">Фамилия<input v-model="form.surname" required /></label>
+        <label class="field">{{ kind === 'teacher' ? 'Имя' : 'Название' }}<input v-model="form.name" required /></label>
+        <label v-if="kind === 'teacher'" class="field">Отчество<input v-model="form.patronymic" /></label>
+      </fieldset>
+      <p v-if="editAction.error.value" class="error-text" role="alert">{{ editAction.error.value }}</p>
+      <button class="btn btn--primary" :disabled="editAction.pending.value" type="submit">{{ editAction.pending.value ? 'Сохраняем…' : 'Сохранить' }}</button>
+    </form>
+  </Modal>
 </template>

@@ -21,7 +21,16 @@ export function useResource<T>(
     loading.value = !background;
     refreshing.value = background;
     error.value = "";
-    if (background) backgroundLoads.value++;
+    let counted = background;
+    function finishBackground() {
+      if (!counted) return;
+      counted = false;
+      backgroundLoads.value = Math.max(0, backgroundLoads.value - 1);
+    }
+    if (background) {
+      backgroundLoads.value++;
+      current.signal.addEventListener("abort", finishBackground, { once: true });
+    }
     try {
       const result = await load(current.signal);
       if (!current.signal.aborted) data.value = result;
@@ -37,8 +46,8 @@ export function useResource<T>(
           );
       }
     } finally {
-      if (background)
-        backgroundLoads.value = Math.max(0, backgroundLoads.value - 1);
+      finishBackground();
+      current.signal.removeEventListener("abort", finishBackground);
       if (!current.signal.aborted) {
         loading.value = false;
         refreshing.value = false;

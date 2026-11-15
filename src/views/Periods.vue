@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { getPeriods, setPeriodFeedback } from "../api/periods";
 import { useResource, useAction } from "../composables/resource";
 import type { PeriodDto } from "../types";
@@ -34,13 +35,7 @@ async function toggle(period: PeriodDto, event: Event) {
 }
 </script>
 <template>
-  <div class="page-header">
-    <h1 class="page-title">Учебные периоды</h1>
-    <p class="page-subtitle">
-      Сбор отзывов открыт только у одного семестра. Новые периоды создаются при
-      импорте.
-    </p>
-  </div>
+  <PageHeader title="Учебные периоды">Сбор отзывов открыт только у одного семестра. Новые периоды создаются при импорте.</PageHeader>
   <p v-if="action.error.value" role="alert" class="error-text">
     {{ action.error.value }}
   </p>

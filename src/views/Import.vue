@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { ref, computed, watch } from "vue";
 import { getSuggestedPeriods } from "../api/periods";
 import {
@@ -211,12 +212,7 @@ async function download(
 }
 </script>
 <template>
-  <div class="page-header">
-    <h1 class="page-title">Импорт</h1>
-    <p class="page-subtitle">
-      Загрузка студентов и нагрузки из Excel с проверкой перед сохранением.
-    </p>
-  </div>
+  <PageHeader title="Импорт">Загрузка студентов и нагрузки из Excel с проверкой перед сохранением.</PageHeader>
   <p
     v-if="downloads.error.value || action.error.value"
     role="alert"

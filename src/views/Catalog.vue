@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import ActionIcon from "../components/ActionIcon.vue";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
 import { computed, reactive, ref, watch } from "vue";
@@ -155,16 +156,7 @@ async function merge() {
 }
 </script>
 <template>
-  <div v-if="!embedded" class="page-header">
-    <h1 class="page-title">{{ title }}</h1>
-    <p class="page-subtitle">
-      {{
-        kind === "criteria"
-          ? "Критерии для оценки преподавания и дисциплин"
-          : "Справочник записей. Новые данные добавляются при импорте нагрузки."
-      }}
-    </p>
-  </div>
+  <PageHeader v-if="!embedded" :title="title">{{ kind === "criteria" ? "Критерии для оценки преподавания и дисциплин" : "Справочник записей. Новые данные добавляются при импорте нагрузки." }}</PageHeader>
   <div class="toolbar">
     <input
       v-if="kind !== 'criteria'"

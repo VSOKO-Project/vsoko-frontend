@@ -77,7 +77,7 @@ function backdrop(event: MouseEvent) {
   margin-bottom: 24px;
 }
 .modal__header h2 {
-  font-family: "Golos Text", sans-serif;
+  font-family: var(--font-body);
   font-size: 20px;
   font-weight: 600;
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { ref } from "vue";
 import { downloadCredentials, getImportGroups } from "../api/import";
 import { useAction, useResource } from "../composables/resource";
@@ -18,10 +19,7 @@ async function download() {
 </script>
 
 <template>
-  <div class="page-header">
-    <h1 class="page-title">Экспорт</h1>
-    <p class="page-subtitle">Скачивание данных системы в Excel.</p>
-  </div>
+  <PageHeader title="Экспорт">Скачивание данных системы в Excel.</PageHeader>
   <section class="card stack" aria-labelledby="credentials-title">
     <h2 id="credentials-title">Логины и пароли</h2>
     <p class="muted">

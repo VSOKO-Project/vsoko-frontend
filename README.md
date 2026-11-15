@@ -74,3 +74,14 @@ The admin navigation groups catalogs, ratings and feedback inside Teachers and D
 предложения категорий. Ссылка на каждый источник ведёт на `/feedback/{id}` и
 загружает полный отзыв через авторизованный API. Администратор может добавить
 категорию и сохранить статус рассмотрения сообщения с заметкой.
+
+## Shared styles
+
+`src/main.ts` loads one CSS entry point: `src/styles/index.css`.
+
+- `tokens.css` owns the light/dark palettes, typography, control dimensions and responsive grid variables. Statistics and their loading placeholders use the same grid tokens.
+- `base.css` contains the reset and native element defaults; `components.css` contains shared controls, cards, tables, statuses, forms and page headings. Base classes precede their modifiers (`btn--sm`, `badge--success`, etc.).
+- `layout.css` owns the application shell. `pages/` contains feature layouts; component-specific behavior remains in scoped Vue styles. `feedback-analysis.css` provides shared styles for report, signal and evidence components, including when mounted independently.
+- `accessibility.css` provides the common reduced-motion rules. Preserve keyboard focus indicators and native input semantics when extending controls.
+
+Reuse `PageHeader` for page titles and optional context/actions, `.form-fields` for form fieldsets, and the shared chart classes for scroll containers and semester charts. Extend the owning stylesheet rather than adding another global override file. `tests/styles.test.ts` checks the actual CSS cascade for button variants, semantic statuses, period switches and loading grids at multiple viewport widths.

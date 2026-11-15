@@ -110,10 +110,10 @@ function update(next: unknown) {
   justify-content: space-between;
   gap: 14px;
   width: 100%;
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 7px;
+  border-radius: var(--control-radius);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: 14px;

@@ -109,3 +109,61 @@ it.each(["table", "cards", "form", "dashboard", "workloads", "text", "list", "fi
     expect(wrapper.get(".loaded").text()).toBe("Результат");
   },
 );
+
+it("updates the shared page heading and omits an absent subtitle", async () => {
+  const { default: PageHeader } = await import("../src/components/PageHeader.vue");
+  const header = mount(PageHeader, { props: { title: "Справочник" } });
+  expect(header.get("h1").text()).toBe("Справочник");
+  expect(header.find(".page-subtitle").exists()).toBe(false);
+  expect(header.classes()).not.toContain("page-header--with-actions");
+  await header.setProps({ title: "Преподаватели", subtitle: "Записи справочника" });
+  expect(header.get("h1").text()).toBe("Преподаватели");
+  expect(header.get(".page-subtitle").text()).toBe("Записи справочника");
+});
+
+it("renders page heading context and an accessible action through slots", async () => {
+  const { default: PageHeader } = await import("../src/components/PageHeader.vue");
+  const header = mount(PageHeader, {
+    props: { title: "Сводка", subtitle: "Запасной текст" },
+    slots: { default: "Статистика выбранного периода", actions: '<button type="button">Выбрать период</button>' },
+  });
+  expect(header.classes()).toContain("page-header--with-actions");
+  expect(header.get(".page-subtitle").text()).toBe("Статистика выбранного периода");
+  expect(header.get("button").text()).toBe("Выбрать период");
+  expect(header.findAll("h1")).toHaveLength(1);
+});
+
+it("keeps empty semesters distinct from zero completion in the coverage chart", async () => {
+  const { default: CoverageChart } = await import("../src/components/CoverageChart.vue");
+  const { dashboard } = await import("./fixtures");
+  const sample = dashboard.timeline[0]!;
+  const items = [
+    { ...sample, periodId: "empty", title: "2025/2026, Осень", coverage: { submittedCount: 0, possibleCount: 0, completionPercent: null } },
+    { ...sample, periodId: "zero", title: "2025/2026, Весна", coverage: { submittedCount: 0, possibleCount: 10, completionPercent: 0 } },
+    { ...sample, periodId: "partial", title: "2026/2027, Осень", coverage: { submittedCount: 5, possibleCount: 10, completionPercent: 50 } },
+  ];
+  const chart = mount(CoverageChart, { props: { items } });
+  expect(chart.findAll(".coverage-track")).toHaveLength(2);
+  expect(chart.findAll(".chart-column")).toHaveLength(2);
+  expect(chart.findAll("rect[tabindex]")[0]!.attributes("aria-label")).toContain("0 из 0");
+  expect(chart.findAll("rect[tabindex]")[1]!.attributes("aria-label")).toContain("0%");
+  expect(chart.get("svg").attributes("style")).toContain("min-width: 400px");
+  chart.unmount();
+});
+
+it("leaves gaps in the grade trend when a semester has no grades", async () => {
+  const { default: GradeTrend } = await import("../src/components/GradeTrend.vue");
+  const { dashboard } = await import("./fixtures");
+  const sample = dashboard.timeline[0]!;
+  const chart = mount(GradeTrend, {
+    props: { items: [
+      { ...sample, periodId: "first", averageGrade: 4 },
+      { ...sample, periodId: "gap", averageGrade: null },
+      { ...sample, periodId: "last", averageGrade: 5 },
+    ] },
+  });
+  expect(chart.findAll(".grade-trend-line")).toHaveLength(0);
+  expect(chart.findAll(".grade-trend-point")).toHaveLength(2);
+  expect(chart.text()).toContain("—");
+  chart.unmount();
+});

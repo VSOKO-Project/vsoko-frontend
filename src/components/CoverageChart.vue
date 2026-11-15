@@ -10,8 +10,8 @@ const y = (percent: number) => 190 - percent * 1.4;
 const number = (value: number) => value.toLocaleString('ru-RU');
 </script>
 <template>
-  <div class="coverage-scroll">
-    <svg :viewBox="`0 0 ${width} 290`" :style="{ minWidth: minimumWidth }" class="coverage-chart" role="img" aria-label="Заполнение отзывов по семестрам: оставлено из возможных, шкала от 0 до 100 процентов">
+  <div class="coverage-scroll chart-scroll">
+    <svg :viewBox="`0 0 ${width} 290`" :style="{ minWidth: minimumWidth }" class="coverage-chart timeline-chart" role="img" aria-label="Заполнение отзывов по семестрам: оставлено из возможных, шкала от 0 до 100 процентов">
       <g v-for="tick in [0,50,100]" :key="tick"><line x1="48" :x2="width - 24" :y1="y(tick)" :y2="y(tick)" class="chart-grid" /><text x="36" :y="y(tick)+4" text-anchor="end" class="chart-tick">{{ tick }}%</text></g>
       <g v-for="(item,i) in items" :key="item.periodId">
         <template v-if="item.coverage.possibleCount > 0">
@@ -27,9 +27,5 @@ const number = (value: number) => value.toLocaleString('ru-RU');
   </div>
 </template>
 <style scoped>
-.coverage-scroll { overflow-x: auto; }
-.coverage-chart { width: 100%; max-height: 300px; display: block; }
 .coverage-track { fill: var(--color-primary); opacity: .12; }
-.coverage-chart .chart-tick { font-size: 13px; }
-.coverage-chart .chart-value { font-size: 14px; }
 </style>

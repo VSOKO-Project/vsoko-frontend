@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import ActionIcon from "../components/ActionIcon.vue";
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
@@ -43,10 +44,7 @@ const visible = computed(() => workloads.value.filter(w =>
 </script>
 <template>
   <div class="student-workloads">
-  <div class="page-header">
-    <h1 class="page-title">Оценка обучения</h1>
-    <p class="page-subtitle">{{ open.map(p => p.title).join(' · ') || 'Дисциплины и преподаватели вашей группы' }}<template v-if="groups"> · {{ groups }}</template> · Поделитесь опытом обучения за семестр.</p>
-  </div>
+  <PageHeader title="Оценка обучения">{{ open.map(p => p.title).join(' · ') || 'Дисциплины и преподаватели вашей группы' }}<template v-if="groups"> · {{ groups }}</template> · Поделитесь опытом обучения за семестр.</PageHeader>
   <LoadState skeleton="workloads" :loading="loading" :error="error" @retry="refresh">
     <template v-if="open.length">
       <section class="card student-progress" aria-label="Прогресс оценивания">

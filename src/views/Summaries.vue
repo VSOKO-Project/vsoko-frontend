@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import type { FeedbackReportDto } from "../types";
 import FeedbackReport from "../components/FeedbackReport.vue";
 import FeedbackCategoryForm from "../components/FeedbackCategoryForm.vue";
@@ -48,12 +49,7 @@ async function generate() {
 </script>
 <template>
   <div class="analysis-page">
-  <div class="page-header">
-    <h1 class="page-title">Анализ отзывов</h1>
-    <p class="page-subtitle">
-      Общие темы и отдельные сообщения, требующие внимания, со ссылками на исходные отзывы.
-    </p>
-  </div>
+  <PageHeader title="Анализ отзывов">Общие темы и отдельные сообщения, требующие внимания, со ссылками на исходные отзывы.</PageHeader>
   <section class="card">
     <div class="filter-grid">
       <label class="field"

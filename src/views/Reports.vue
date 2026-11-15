@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { ref, watch, onUnmounted } from "vue";
 import { generateReport, getReportHistory, downloadReport, type ReportHistoryEntry } from "../api/report";
 import { periodParams } from "../store/period";
@@ -42,10 +43,7 @@ function formatSize(bytes: number) {
 }
 </script>
 <template>
-  <div class="page-header">
-    <h1 class="page-title">Отчёты и данные</h1>
-    <p class="page-subtitle">Оценки качества образования за выбранный период в одном документе.</p>
-  </div>
+  <PageHeader title="Отчёты и данные">Оценки качества образования за выбранный период в одном документе.</PageHeader>
   <div class="reports-layout">
     <section class="card stack reports-form">
       <span class="eyebrow">НОВЫЙ ОТЧЁТ</span>

@@ -1,0 +1,54 @@
+:root {
+  --font-body: "Golos Text", sans-serif;
+  --control-height: 38px;
+  --control-radius: 7px;
+  --surface-radius: 10px;
+  --stats-columns: repeat(auto-fit, minmax(220px, 1fr));
+  --stats-gap: 16px;
+  --panel-columns: repeat(2, minmax(0, 1fr));
+  --color-primary: #2f6f7e;
+  --color-primary-light: #255b68;
+  --color-accent: #2f6f7e;
+  --color-surface: #fff;
+  --color-bg-secondary: #e3eff1;
+  --color-success: #2e7d5b;
+  --color-warning: #8c601e;
+  --color-danger: #a63d40;
+  --color-button-text: #fff;
+  color-scheme: light;
+  --color-bg: #f7f8fa;
+  --color-border: #e2e5e9;
+  --color-text: #20262d;
+  --color-text-secondary: #626b76;
+  --color-text-muted: #626b76;
+}
+
+:root[data-theme="dark"] {
+  --color-primary: #6fb3c1;
+  --color-primary-light: #8ac6d2;
+  --color-accent: #6fb3c1;
+  --color-surface: #1b2730;
+  --color-bg-secondary: #1e3a42;
+  --color-success: #80c6a4;
+  --color-warning: #e4ba73;
+  --color-danger: #f0a3a5;
+  --color-button-text: #12232a;
+  color-scheme: dark;
+  --color-bg: #151a20;
+  --color-border: #303740;
+  --color-text: #e7eaee;
+  --color-text-secondary: #a9b1bd;
+  --color-text-muted: #a9b1bd;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --panel-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --stats-columns: repeat(2, minmax(0, 1fr));
+  }
+}

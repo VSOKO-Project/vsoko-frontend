@@ -290,7 +290,7 @@ const sortOptions = [
   </LoadState>
   <Modal :open="editing" :title="editTitle" @close="editing = false">
     <form class="feedback-record-form" @submit.prevent="saveRecord">
-      <fieldset :disabled="editAction.pending.value">
+      <fieldset class="form-fields" :disabled="editAction.pending.value">
         <label v-if="kind === 'teacher'" class="field">Фамилия<input v-model="form.surname" required /></label>
         <label class="field">{{ kind === 'teacher' ? 'Имя' : 'Название' }}<input v-model="form.name" required /></label>
         <label v-if="kind === 'teacher'" class="field">Отчество<input v-model="form.patronymic" /></label>

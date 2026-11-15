@@ -1,0 +1,56 @@
+.analysis-report {
+  display: grid;
+  gap: 24px;
+}
+
+.analysis-report h3 {
+  margin-bottom: 12px;
+}
+
+.analysis-topic, .analysis-signal {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.analysis-topic summary, .analysis-review summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.analysis-evidence {
+  padding-left: 20px;
+  display: grid;
+  gap: 20px;
+}
+
+.analysis-evidence li {
+  overflow-wrap: anywhere;
+}
+
+.analysis-evidence .text-link {
+  display: block;
+  margin-top: 8px;
+}
+
+.analysis-report blockquote {
+  margin: 12px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.analysis-report form {
+  display: grid;
+  gap: 16px;
+}
+
+.analysis-review textarea {
+  width: 100%;
+}
+
+.analysis-signal h4 {
+  margin: 0;
+}
+
+.analysis-review {
+  margin-top: 12px;
+}

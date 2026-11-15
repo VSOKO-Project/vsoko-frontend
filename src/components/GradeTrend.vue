@@ -13,8 +13,8 @@ const segments = computed(() => props.items.flatMap((item, i) => {
 }));
 </script>
 <template>
-  <div class="grade-trend-scroll">
-    <svg :viewBox="`0 0 ${width} 265`" :style="{ minWidth: minimumWidth }" class="grade-trend" role="img" aria-label="Динамика средней оценки дисциплин по семестрам, шкала от 1 до 5">
+  <div class="grade-trend-scroll chart-scroll">
+    <svg :viewBox="`0 0 ${width} 265`" :style="{ minWidth: minimumWidth }" class="grade-trend timeline-chart" role="img" aria-label="Динамика средней оценки дисциплин по семестрам, шкала от 1 до 5">
       <g v-for="tick in [1,2,3,4,5]" :key="tick"><line x1="48" :x2="width - 24" :y1="y(tick)" :y2="y(tick)" class="chart-grid" /><text x="36" :y="y(tick) + 4" text-anchor="end" class="chart-tick">{{ tick }}</text></g>
       <line v-for="(segment, i) in segments" :key="i" v-bind="segment" class="grade-trend-line" />
       <g v-for="(item, i) in items" :key="item.periodId">
@@ -26,10 +26,6 @@ const segments = computed(() => props.items.flatMap((item, i) => {
   </div>
 </template>
 <style scoped>
-.grade-trend-scroll { overflow-x: auto; }
-.grade-trend { display: block; width: 100%; max-height: 300px; }
-.grade-trend .chart-tick { font-size: 13px; }
-.grade-trend .chart-value { font-size: 14px; }
 .grade-trend-line { stroke: var(--color-primary); stroke-width: 3; }
 .grade-trend-point { fill: var(--color-primary); stroke: var(--color-surface); stroke-width: 2; }
 .grade-trend-point:focus { outline: 2px solid var(--color-primary); outline-offset: 3px; }

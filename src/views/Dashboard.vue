@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { feedbackLocation, feedbackCountText } from "../utils/feedback-links";
 import { computed } from "vue";
 import { getDashboard } from "../api/dashboard";
@@ -26,13 +27,7 @@ const distribution = computed(() => data.value?.distribution || []);
 const hasTrend = computed(() => data.value?.timeline.some(p => p.averageGrade !== null));
 </script>
 <template>
-  <div class="page-header dashboard-heading">
-    <div>
-      <h1 class="page-title">Сводка</h1>
-      <p class="page-subtitle">Статистика оценок и отзывов</p>
-    </div>
-    <PeriodSelect />
-  </div>
+  <PageHeader title="Сводка" subtitle="Статистика оценок и отзывов"><template #actions><PeriodSelect /></template></PageHeader>
   <LoadState
     skeleton="dashboard"
     :loading="loading"

@@ -1,12 +1,5 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import { router } from "./router";
-import "./index.css";
-import "./fonts.css";
-import "./pages/LoginPage.css";
-import "./pages/admin/AdminPages.css";
-import "./design-system.css";
-import "./vue.css";
-import "./ui-refinement.css";
-import "./components/layout/layout.css";
+import "./styles/index.css";
 createApp(App).use(router).mount("#root");

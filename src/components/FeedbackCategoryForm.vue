@@ -15,7 +15,7 @@ async function save() {
 </script>
 <template>
   <form class="analysis-category-form" @submit.prevent="save">
-    <fieldset :disabled="action.pending.value">
+    <fieldset class="form-fields" :disabled="action.pending.value">
       <label class="field">Название<input v-model="form.name" required maxlength="120" /></label>
       <label class="field">Что относится к категории<textarea v-model="form.description" required maxlength="600" rows="3" /></label>
       <label class="analysis-category-form__checkbox"><input v-model="form.requiresAttention" type="checkbox" /><span>Сообщения требуют отдельной проверки</span></label>
@@ -31,13 +31,6 @@ async function save() {
   display: grid;
   gap: 20px;
   max-width: 720px;
-}
-.analysis-category-form fieldset {
-  display: grid;
-  gap: 20px;
-  border: 0;
-  padding: 0;
-  min-width: 0;
 }
 .analysis-category-form textarea {
   width: 100%;

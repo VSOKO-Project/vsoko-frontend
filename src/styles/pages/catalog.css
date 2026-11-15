@@ -1,0 +1,70 @@
+.summary-text {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 15px;
+  margin: 20px 0;
+}
+
+.summary-card {
+  margin-top: 24px;
+}
+
+.filter-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filter-grid .field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.merge-search {
+  margin: 20px 0 10px;
+}
+
+.merge-results {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+}
+
+.merge-result {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.merge-result:last-child {
+  border: 0;
+}
+
+.merge-result--selected {
+  background: var(--color-bg-secondary);
+}
+
+.merge-result input {
+  accent-color: var(--color-primary);
+}
+
+.merge-empty {
+  margin: 12px 0;
+}
+
+@media (max-width: 640px) {
+  .filter-grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-grid .field {
+    min-width: 0;
+  }
+}

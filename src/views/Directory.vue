@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Catalog from './Catalog.vue';
@@ -11,7 +12,7 @@ const title = computed(() => props.kind === 'teachers' ? 'Преподавате
 const subtitle = computed(() => ({ list: 'Справочник записей. Новые данные добавляются при импорте нагрузки.', ratings: 'Средние оценки по всем критериям. Выберите запись, чтобы прочитать сводку.', feedback: 'Выберите запись, чтобы посмотреть отзывы студентов.' })[tab.value]);
 </script>
 <template>
-  <div class="page-header"><h1 class="page-title">{{ title }}</h1><p class="page-subtitle">{{ subtitle }}</p></div>
+  <PageHeader :title="title">{{ subtitle }}</PageHeader>
   <nav class="student-filters ratings-kind" :aria-label="`Разделы: ${title}`">
     <RouterLink v-for="item in [{ key: 'list', label: 'Список' }, { key: 'ratings', label: 'Оценки' }, { key: 'feedback', label: 'Отзывы' }]" :key="item.key" class="btn" :class="tab === item.key ? 'btn--primary' : 'btn--secondary'" :aria-current="tab === item.key ? 'page' : undefined" :to="{ path: `/${kind}`, query: item.key === 'list' ? {} : { tab: item.key } }">{{ item.label }}</RouterLink>
   </nav>

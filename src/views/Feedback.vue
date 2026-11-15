@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import { computed, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { getWorkloadById } from "../api/workload";
@@ -74,12 +75,7 @@ async function submit() {
     <div class="feedback-actions"><RouterLink class="btn btn--primary" to="/workloads?filter=remaining">К следующей дисциплине</RouterLink><RouterLink class="btn btn--secondary" to="/my-feedback">Мои оценки</RouterLink></div>
   </section>
   <template v-else>
-  <div class="page-header">
-    <h1 class="page-title">Оценка дисциплины и преподавателя</h1>
-    <p class="page-subtitle">
-      Оцените каждый критерий от 1 до 5: от «Совсем не устраивает» до «Полностью устраивает».
-    </p>
-  </div>
+  <PageHeader title="Оценка дисциплины и преподавателя">Оцените каждый критерий от 1 до 5: от «Совсем не устраивает» до «Полностью устраивает».</PageHeader>
   <LoadState skeleton="feedback" :loading="loading" :error="error" @retry="refresh"
     ><template v-if="data"
       ><div class="card feedback-editor">

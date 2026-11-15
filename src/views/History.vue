@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from "../components/PageHeader.vue";
 import ActionIcon from "../components/ActionIcon.vue";
 import { DEFAULT_PAGE_SIZE } from "../utils/constants";
 import { ref, watch } from "vue";
@@ -88,10 +89,7 @@ async function save() {
 }
 </script>
 <template>
-  <div class="page-header">
-    <h1 class="page-title">Мои оценки</h1>
-    <p class="page-subtitle">Оценки открытого периода можно изменить.</p>
-  </div>
+  <PageHeader title="Мои оценки">Оценки открытого периода можно изменить.</PageHeader>
   <p v-if="action.error.value" class="error-text" role="alert">
     {{ action.error.value }}
   </p>

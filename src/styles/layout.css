@@ -1,5 +1,9 @@
 /* Application shell. Keep layout widths and responsive rules together. */
-:root { --sidebar-width: 236px; }
+
+:root {
+  --sidebar-width: 236px;
+}
+
 .sidebar {
   height: 100dvh;
   background: var(--color-surface);
@@ -13,15 +17,18 @@
   transition: transform 0.2s;
   width: var(--sidebar-width);
 }
+
 .sidebar__logo {
   padding: 24px 20px 28px;
 }
+
 .sidebar__caption {
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
   padding: 0 24px 14px;
 }
+
 .sidebar__nav {
   display: flex;
   flex-direction: column;
@@ -30,6 +37,7 @@
   padding: 0 12px 16px;
   gap: 3px;
 }
+
 .sidebar__link {
   display: flex;
   align-items: center;
@@ -42,18 +50,22 @@
   border-radius: 6px;
   font-weight: 450;
 }
+
 .sidebar__link svg {
   width: 18px;
   flex-shrink: 0;
 }
+
 .sidebar__link:hover {
   background: var(--color-bg);
 }
+
 .sidebar__link--active {
   background: var(--color-bg-secondary);
   color: var(--color-primary);
   font-weight: 550;
 }
+
 .sidebar__footer {
   margin: 24px;
   padding-top: 20px;
@@ -62,10 +74,12 @@
   line-height: 1.8;
   color: var(--color-text-muted);
 }
+
 .sidebar-overlay {
   display: none;
   border: 0;
 }
+
 .header {
   display: flex;
   align-items: center;
@@ -77,17 +91,20 @@
   padding: 0 32px;
   position: relative;
 }
+
 .header__left,
 .header__actions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
+
 .header__title {
   font-size: 13px;
   font-weight: 400;
   color: var(--color-text-secondary);
 }
+
 .header__role {
   font-size: 11px;
   color: var(--color-primary);
@@ -95,6 +112,7 @@
   padding: 4px 10px;
   border-radius: 99px;
 }
+
 .header__menu-btn {
   display: none;
   background: none;
@@ -103,6 +121,7 @@
   padding: 8px;
   cursor: pointer;
 }
+
 .header__logout {
   display: flex;
   align-items: center;
@@ -116,13 +135,16 @@
   min-height: 40px;
   font-size: 13px;
 }
+
 .header__logout:hover {
   background: var(--color-bg-secondary);
 }
+
 .app-layout {
   display: flex;
   min-height: 100dvh;
 }
+
 .app-layout__main {
   flex: 1;
   min-width: 0;
@@ -131,6 +153,7 @@
   min-height: 100dvh;
   margin-left: var(--sidebar-width);
 }
+
 .app-layout__content {
   flex: 1;
   max-width: 1440px;
@@ -139,10 +162,12 @@
   outline: none;
   padding: 30px 36px;
 }
+
 .header__actions {
   margin-left: auto;
   gap: 18px;
 }
+
 .account-info {
   display: flex;
   flex-direction: column;
@@ -150,6 +175,7 @@
   line-height: 1.4;
   min-width: 0;
 }
+
 .account-login {
   font-size: 13px;
   font-weight: 600;
@@ -158,14 +184,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .account-role {
   font-size: 11px;
   color: var(--color-text-secondary);
 }
+
 .sidebar__settings {
   padding: 12px 16px;
   border-top: 1px solid var(--color-border);
 }
+
 .refresh-progress {
   position: absolute;
   bottom: 0;
@@ -175,6 +204,7 @@
   background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   overflow: hidden;
 }
+
 .refresh-progress::after {
   content: "";
   display: block;
@@ -183,6 +213,7 @@
   background: var(--color-primary);
   animation: refresh-slide 1.4s ease-in-out infinite;
 }
+
 .update-notice {
   padding: 10px 14px;
   border: 1px solid var(--color-border);
@@ -195,14 +226,30 @@
   color: var(--color-text-secondary);
   background: var(--color-surface);
 }
+
 @media (max-width: 1050px) {
-  .header { padding: 0 24px; }
-  .app-layout__content { padding: 28px 24px; }
+  .header {
+    padding: 0 24px;
+  }
+
+  .app-layout__content {
+    padding: 28px 24px;
+  }
 }
+
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
-  .sidebar--open { transform: translateX(0); }
-  .sidebar__link { min-height: 44px; }
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar--open {
+    transform: translateX(0);
+  }
+
+  .sidebar__link {
+    min-height: 44px;
+  }
+
   .sidebar-overlay {
     display: block;
     position: fixed;
@@ -210,23 +257,49 @@
     background: #0c202966;
     z-index: 199;
   }
-  .app-layout__main { margin-left: 0; }
-  .app-layout__content { padding: 24px 16px; }
-  .header { min-height: 60px; padding: 0 12px; gap: 8px; }
-  .header__left { gap: 8px; }
-  .header__actions { gap: 10px; }
-  .header__menu-btn { display: flex; }
-  .account-login { max-width: 150px; }
+
+  .app-layout__main {
+    margin-left: 0;
+  }
+
+  .app-layout__content {
+    padding: 24px 16px;
+  }
+
+  .header {
+    min-height: 60px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .header__left {
+    gap: 8px;
+  }
+
+  .header__actions {
+    gap: 10px;
+  }
+
+  .header__menu-btn {
+    display: flex;
+  }
+
+  .account-login {
+    max-width: 150px;
+  }
 }
+
 .sidebar__close {
   position: absolute;
   top: 12px;
   right: 8px;
 }
+
 @keyframes refresh-slide {
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(430%);
   }

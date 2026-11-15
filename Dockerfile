@@ -11,8 +11,11 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_DEFAULT_PAGE_SIZE=$VITE_DEFAULT_PAGE_SIZE
 ENV VITE_SHOW_PASSWORD_RESET_NOTICE=$VITE_SHOW_PASSWORD_RESET_NOTICE
 RUN pnpm build
-FROM nginx:stable-alpine
+FROM nginxinc/nginx-unprivileged:stable-alpine
+USER root
+RUN apk upgrade --no-cache
+USER 101
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
